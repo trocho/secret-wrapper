@@ -65,7 +65,7 @@ function scopes(values = []) {
 }
 
 
-export function parseArguments(arguments_) {
+function parseRunArguments(arguments_) {
   if (arguments_.length === 0 || arguments_[0] === "--help" || arguments_[0] === "-h") {
     return { help: true };
   }
@@ -82,8 +82,22 @@ export function parseArguments(arguments_) {
     ["bind", "scope", "decode-record", "decode"],
   );
   requireRunOptions(options);
-  parseBindings(options);
-  return { action: "run", options, command: arguments_.slice(separator + 1) };
+  return {
+    action: "run",
+    options,
+    bindings: parseBindings(options),
+    command: arguments_.slice(separator + 1),
+  };
+}
+
+
+export function parseArguments(arguments_) {
+  const parsed = parseRunArguments(arguments_);
+  if (parsed.help) {
+    return parsed;
+  }
+  const { bindings: _bindings, ...result } = parsed;
+  return result;
 }
 
 
@@ -165,20 +179,22 @@ export function launch(command, environment, debug = false) {
 export async function run(arguments_) {
   let parsed;
   try {
-    parsed = parseArguments(arguments_);
+    parsed = parseRunArguments(arguments_);
     if (parsed.help) {
       console.log(usage);
       return 0;
     }
     const scope = parsed.options.scope?.length ? scopes(parsed.options.scope) : undefined;
-    const bindings = parseBindings(parsed.options).map((binding) => ({
+    const bindings = parsed.bindings.map((binding) => ({
       ...binding,
       ...(scope ? { scope } : {}),
     }));
-    const scopeNames = Object.keys(scope ?? {}).sort().join(", ") || "none";
-    const bindingSummary = bindings.map((binding) => `${binding.name}=${binding.selector.join(".")}`).join(", ");
-    const decodingSummary = bindings.map((binding) => `${binding.name}:record=${binding.decodeRecord ?? "none"},value=${binding.decode ?? "none"}`).join("; ");
-    writeDebug(parsed.options.debug, `provider=${parsed.options.provider}; binds=${bindingSummary}; scope=${scopeNames}; decoding=${decodingSummary}`);
+    if (parsed.options.debug) {
+      const scopeNames = Object.keys(scope ?? {}).sort().join(", ") || "none";
+      const bindingSummary = bindings.map((binding) => `${binding.name}=${binding.selector.join(".")}`).join(", ");
+      const decodingSummary = bindings.map((binding) => `${binding.name}:record=${binding.decodeRecord ?? "none"},value=${binding.decode ?? "none"}`).join("; ");
+      writeDebug(true, `provider=${parsed.options.provider}; binds=${bindingSummary}; scope=${scopeNames}; decoding=${decodingSummary}`);
+    }
     writeDebug(parsed.options.debug, `retrieving ${bindings.length} secret value${bindings.length === 1 ? "" : "s"}`);
     const values = {};
     for (const binding of bindings) {
