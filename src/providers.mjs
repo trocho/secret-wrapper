@@ -4,15 +4,6 @@ import { spawnSync } from "node:child_process";
 export class ProviderError extends Error {}
 
 
-function requireBinding(binding, name, provider) {
-  const value = binding[name];
-  if (!value) {
-    throw new ProviderError(`${provider} requires ${name} in its local configuration`);
-  }
-  return value;
-}
-
-
 function scopeValue(binding, name) {
   return binding.scope?.[name];
 }
@@ -32,6 +23,20 @@ function trimNewline(value) {
 }
 
 
+function selectorPart(binding, index, provider, name) {
+  const value = binding.selector?.[index];
+  if (!value) {
+    throw new ProviderError(`${provider} selector requires ${name}`);
+  }
+  return value;
+}
+
+
+function selection(value, selector, consumed) {
+  return { value, path: selector.slice(consumed) };
+}
+
+
 export function execute(command, arguments_) {
   const result = spawnSync(command, arguments_, {
     encoding: "utf8",
@@ -46,48 +51,46 @@ export function execute(command, arguments_) {
 
 function fromMacosKeychain(binding, runCommand) {
   rejectUnexpectedScope(binding, [], "macos-keychain");
-  const service = requireBinding(binding, "item", "macos-keychain");
-  const account = requireBinding(binding, "field", "macos-keychain");
-  return trimNewline(runCommand("security", [
+  const service = selectorPart(binding, 0, "macos-keychain", "a service and account");
+  const account = selectorPart(binding, 1, "macos-keychain", "a service and account");
+  return selection(trimNewline(runCommand("security", [
     "find-generic-password", "-s", service, "-a", account, "-w",
-  ]));
+  ])), binding.selector, 2);
 }
 
 
 function fromLinuxSecretService(binding, runCommand) {
   rejectUnexpectedScope(binding, [], "linux-secret-service");
-  const service = requireBinding(binding, "item", "linux-secret-service");
-  const account = requireBinding(binding, "field", "linux-secret-service");
-  return trimNewline(runCommand("secret-tool", [
+  const service = selectorPart(binding, 0, "linux-secret-service", "a service and account");
+  const account = selectorPart(binding, 1, "linux-secret-service", "a service and account");
+  return selection(trimNewline(runCommand("secret-tool", [
     "lookup", "service", service, "account", account,
-  ]));
+  ])), binding.selector, 2);
 }
 
 
 function fromWindowsCredentialManager(binding, runCommand) {
   rejectUnexpectedScope(binding, [], "windows-credential-manager");
-  if (binding.field) {
-    throw new ProviderError("windows-credential-manager has no selectable field");
-  }
-  const target = requireBinding(binding, "item", "windows-credential-manager");
+  const target = selectorPart(binding, 0, "windows-credential-manager", "a target");
   const escapedTarget = target.replaceAll("'", "''");
   const script = [
     `$c=Get-StoredCredential -Target '${escapedTarget}'`,
     "if ($null -eq $c) { exit 3 }",
     "[System.Net.NetworkCredential]::new('', $c.Password).Password",
   ].join("; ");
-  return trimNewline(runCommand("powershell", [
+  return selection(trimNewline(runCommand("powershell", [
     "-NoProfile", "-NonInteractive", "-Command", script,
-  ]));
+  ])), binding.selector, 1);
 }
 
 
 function fromBitwarden(binding, runCommand) {
   rejectUnexpectedScope(binding, [], "bitwarden");
-  const item = requireBinding(binding, "item", "bitwarden");
-  const field = binding.field ?? "password";
+  const item = selectorPart(binding, 0, "bitwarden", "an item");
+  const field = binding.selector[1] ?? "password";
+  const consumed = binding.selector[1] ? 2 : 1;
   if (["password", "username", "uri", "totp"].includes(field)) {
-    return trimNewline(runCommand("bw", ["get", field, item]));
+    return selection(trimNewline(runCommand("bw", ["get", field, item])), binding.selector, consumed);
   }
   let payload;
   try {
@@ -101,14 +104,14 @@ function fromBitwarden(binding, runCommand) {
   if (typeof value !== "string") {
     throw new ProviderError("bitwarden did not return the requested item field");
   }
-  return value;
+  return selection(value, binding.selector, consumed);
 }
 
 
 function fromBws(binding, runCommand) {
   rejectUnexpectedScope(binding, [], "bws");
-  const secretId = requireBinding(binding, "item", "bws");
-  if (binding.field && binding.field !== "value") {
+  const secretId = selectorPart(binding, 0, "bws", "a secret ID");
+  if (binding.selector[1] && binding.selector[1] !== "value") {
     throw new ProviderError("bws supports only the value field");
   }
   let payload;
@@ -122,27 +125,28 @@ function fromBws(binding, runCommand) {
   if (typeof payload?.value !== "string") {
     throw new ProviderError("bws did not return a usable secret value");
   }
-  return payload.value;
+  return selection(payload.value, binding.selector, binding.selector[1] ? 2 : 1);
 }
 
 
 function fromOnePassword(binding, runCommand) {
   rejectUnexpectedScope(binding, ["vault"], "1password");
   const vault = scopeValue(binding, "vault");
-  const item = requireBinding(binding, "item", "1password");
-  const field = binding.field ?? "password";
+  const item = selectorPart(binding, 0, "1password", "an item");
+  const field = binding.selector[1] ?? "password";
+  const consumed = binding.selector[1] ? 2 : 1;
   if (!vault) {
     throw new ProviderError("1password requires scope vault in its binding");
   }
   const reference = `op://${vault}/${item}/${field}`;
-  return trimNewline(runCommand("op", ["read", reference]));
+  return selection(trimNewline(runCommand("op", ["read", reference])), binding.selector, consumed);
 }
 
 
 function fromInfisical(binding, runCommand) {
   rejectUnexpectedScope(binding, ["project", "environment", "path"], "infisical");
-  const key = requireBinding(binding, "item", "infisical");
-  if (binding.field && binding.field !== "value") {
+  const key = selectorPart(binding, 0, "infisical", "a secret key");
+  if (binding.selector[1] && binding.selector[1] !== "value") {
     throw new ProviderError("infisical supports only the value field");
   }
   const arguments_ = ["secrets", "get", key, "--plain", "--silent"];
@@ -155,7 +159,7 @@ function fromInfisical(binding, runCommand) {
       arguments_.push(`${flag}=${scopeValue(binding, option)}`);
     }
   }
-  return trimNewline(runCommand("infisical", arguments_));
+  return selection(trimNewline(runCommand("infisical", arguments_)), binding.selector, binding.selector[1] ? 2 : 1);
 }
 
 

@@ -41,12 +41,12 @@ npx @trocho/agent-secret-wrapper run --help
 
 ## Quick start
 
-Use the same command shape for every provider. This example reads the `password` field from the Bitwarden item named `portainer` and exposes it only to the MCP process as `PORTAINER_API_KEY`.
+Use the same command shape for every provider. This example reads the `password` value from the Bitwarden item named `portainer` and exposes it only to the MCP process as `PORTAINER_API_KEY`.
 
 ```sh
 agent-secret-wrapper run \
   --provider bitwarden \
-  --item portainer --field password \
+  --selector portainer.password \
   --env PORTAINER_API_KEY \
   -- /absolute/path/to/portainer-mcp
 ```
@@ -58,9 +58,9 @@ Replace only the provider location and the target command. Never put the secret 
 | Argument | Meaning |
 | --- | --- |
 | `--provider` | Which secret system to query. |
-| `--item` | The record, entry, or secret to read. |
-| `--field` | A value inside that record; omit it when the provider has a single value. |
+| `--selector` | A dot-separated path: first the record or target, then its value, then optional JSON properties. |
 | `--scope` | Optional context, such as a vault, project, environment, or path. Repeat when needed. |
+| `--decode` | Optional explicit decoding of the selected value. Currently `base64` is supported. |
 | `--env` | The environment-variable name supplied to the target process. |
 
 The canonical form is:
@@ -68,7 +68,7 @@ The canonical form is:
 ```sh
 agent-secret-wrapper run \
   --provider PROVIDER \
-  --item ITEM [--field FIELD] [--scope NAME=VALUE ...] \
+  --selector SELECTOR [--scope NAME=VALUE ...] [--decode base64] \
   --env ENV_NAME \
   -- TARGET [ARGS...]
 ```
@@ -92,27 +92,50 @@ The skill tells Codex and Claude Code to use this consistent, secret-safe comman
 /plugin install secret-process-wrapper@patryk-agent-tools
 ```
 
-## Providers
+## Selectors and providers
 
-| Provider | Value for `--provider` | `--item` means | `--field` means |
+A selector identifies exactly one value without a separate item/field vocabulary. Its first segment is the provider's record locator; the second is the value within that record where the provider has one. Further segments select a scalar inside a JSON value. Escape a literal dot in any segment with `\.` and quote that selector so the shell preserves the backslash.
+
+| Provider | Value for `--provider` | Selector structure | Example |
 | --- | --- | --- | --- |
-| macOS Keychain | `macos-keychain` | Service | Account |
-| Linux Secret Service | `linux-secret-service` | Service | Account |
-| Windows Credential Manager | `windows-credential-manager` | Target | Not used |
-| Bitwarden | `bitwarden` | Vault item | `password`, `username`, `totp`, `uri`, or a custom field |
-| Bitwarden Secrets Manager | `bws` | Secret ID | `value` only |
-| 1Password | `1password` | Item | Item field; add `--scope vault=VAULT` |
-| Infisical | `infisical` | Secret key | `value` only; add scope when required |
+| macOS Keychain | `macos-keychain` | `SERVICE.ACCOUNT[.JSON_PATH]` | `portainer-mcp.api-key` |
+| Linux Secret Service | `linux-secret-service` | `SERVICE.ACCOUNT[.JSON_PATH]` | `portainer-mcp.api-key` |
+| Windows Credential Manager | `windows-credential-manager` | `TARGET[.JSON_PATH]` | `portainer-mcp-api-key` |
+| Bitwarden | `bitwarden` | `ITEM.FIELD[.JSON_PATH]` | `portainer.password` |
+| Bitwarden Secrets Manager | `bws` | `SECRET_ID[.value][.JSON_PATH]` | `SECRET_ID.value` |
+| 1Password | `1password` | `ITEM.FIELD[.JSON_PATH]`; add `--scope vault=VAULT` | `portainer.api-key` |
+| Infisical | `infisical` | `SECRET_KEY[.value][.JSON_PATH]` | `PORTAINER_API_KEY.value` |
+
+For example, `portainer.config.api.token` first selects the `config` field of the `portainer` item, parses that field as JSON, then passes its `api.token` value to the target process. JSON properties may also name array indexes, such as `credentials.0.token`. The final selection must be text, a number, or a boolean.
+
+If the selected text is Base64-encoded, opt in to decoding it:
+
+```sh
+agent-secret-wrapper run \
+  --provider bitwarden --selector portainer.encoded-api-key \
+  --decode base64 --env PORTAINER_API_KEY \
+  -- /absolute/path/to/portainer-mcp
+```
+
+The wrapper never guesses that a value is Base64. It decodes only when asked and rejects malformed values.
+
+For a locator with literal dots, use single quotes so the shell passes the selector unchanged:
+
+```sh
+--selector 'com\.example\.portainer.api-key'
+```
+
+The same escaping applies to a Bitwarden login property: `--selector 'portainer.login\.username'`.
 
 See [provider recipes](docs/provider-recipes.md) for a copy-ready command for every provider.
 
 ## Debugging
 
-Add `--debug` before `--` to see the selected provider, item, field, scope, retrieval stage, and target-process exit code on standard error.
+Add `--debug` before `--` to see the selected provider, selector, decoding mode, scope, retrieval stage, and target-process exit code on standard error.
 
 ```sh
 agent-secret-wrapper run \
-  --provider bitwarden --item portainer --field password \
+  --provider bitwarden --selector portainer.password \
   --env PORTAINER_API_KEY --debug \
   -- /absolute/path/to/portainer-mcp
 ```

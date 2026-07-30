@@ -5,13 +5,14 @@ description: Configure the headless Agent Secret Wrapper CLI to launch an MCP se
 
 # Secret Process Wrapper
 
-Use `agent-secret-wrapper run` as the common launcher. Every provider uses the same runtime contract: provider, item, optional field and scope, target environment-variable name, and command.
+Use `agent-secret-wrapper run` as the common launcher. Every provider uses the same runtime contract: provider, selector, optional scope and decoding, target environment-variable name, and command.
 
 ## Standard
 
 - Keep the secret out of TOML, `.env`, shell history, and chat.
-- Use `--item` for the provider record and `--field` when the record has more than one value.
+- Use `--selector RECORD.FIELD[.JSON_PATH]` to identify the provider record, its value, and optionally a nested JSON value. Escape a literal dot with `\.` and quote that selector so the shell preserves the escape.
 - Use `--scope NAME=VALUE` only for provider context such as a 1Password vault or Infisical environment.
+- Use `--decode base64` only when the selected text is deliberately Base64-encoded; do not infer encoding.
 - Use `--env` only for the target environment-variable name.
 - Launch the target through the CLI, not directly.
 
@@ -19,7 +20,7 @@ Use `agent-secret-wrapper run` as the common launcher. Every provider uses the s
 
 ```zsh
 agent-secret-wrapper run \
-  --provider macos-keychain --item example-mcp --field api-key \
+  --provider macos-keychain --selector example-mcp.api-key \
   --env EXAMPLE_API_KEY \
   -- /absolute/path/to/example-mcp "$@"
 ```

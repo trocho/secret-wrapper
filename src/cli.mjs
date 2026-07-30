@@ -1,14 +1,15 @@
 import { spawn } from "node:child_process";
 import { buildChildEnvironment, loadSecret, ProviderError, providerNames } from "./providers.mjs";
+import { decodeSecret, parseSelector, selectJsonPath } from "./selector.mjs";
 
 
 const usage = `Usage:
-  agent-secret-wrapper run --provider PROVIDER --item ITEM [--field FIELD] [--scope NAME=VALUE ...] --env ENV_NAME [--debug] -- COMMAND [ARGS...]
+  agent-secret-wrapper run --provider PROVIDER --selector SELECTOR [--scope NAME=VALUE ...] [--decode base64] --env ENV_NAME [--debug] -- COMMAND [ARGS...]
 
 Providers:
   ${providerNames.join(", ")}
 
-Run always has the same shape. Item, field, and scope describe the location inside the selected provider.`;
+Run always has the same shape. Selector and scope describe the location inside the selected provider.`;
 
 
 function parseOptionPairs(arguments_, allowed = []) {
@@ -43,8 +44,8 @@ function parseOptionPairs(arguments_, allowed = []) {
 
 
 function requireRunOptions(options) {
-  if (!options.provider || !options.item || !options.env) {
-    throw new ProviderError("--provider, --item, and --env are required");
+  if (!options.provider || !options.selector || !options.env) {
+    throw new ProviderError("--provider, --selector, and --env are required");
   }
   if (!/^[A-Z_][A-Z0-9_]*$/.test(options.env)) {
     throw new ProviderError("--env must be an uppercase environment variable name");
@@ -78,7 +79,7 @@ export function parseArguments(arguments_) {
   if (separator === -1 || separator === arguments_.length - 1) {
     throw new ProviderError("provide the target command after --");
   }
-  const options = parseOptionPairs(arguments_.slice(1, separator), ["provider", "item", "field", "scope", "env", "debug"]);
+  const options = parseOptionPairs(arguments_.slice(1, separator), ["provider", "selector", "scope", "decode", "env", "debug"]);
   requireRunOptions(options);
   return { action: "run", options, command: arguments_.slice(separator + 1) };
 }
@@ -119,14 +120,14 @@ export async function run(arguments_) {
       return 0;
     }
     const binding = {
-      item: parsed.options.item,
-      ...(parsed.options.field ? { field: parsed.options.field } : {}),
+      selector: parseSelector(parsed.options.selector),
       ...(parsed.options.scope?.length ? { scope: scopes(parsed.options.scope) } : {}),
     };
     const scope = Object.keys(binding.scope ?? {}).sort().join(", ") || "none";
-    writeDebug(parsed.options.debug, `provider=${parsed.options.provider}; item=${binding.item}; field=${binding.field ?? "default"}; scope=${scope}`);
+    writeDebug(parsed.options.debug, `provider=${parsed.options.provider}; selector=${parsed.options.selector}; scope=${scope}; decode=${parsed.options.decode ?? "none"}`);
     writeDebug(parsed.options.debug, "retrieving one secret");
-    const secret = loadSecret(parsed.options.provider, binding);
+    const selected = loadSecret(parsed.options.provider, binding);
+    const secret = decodeSecret(selectJsonPath(selected.value, selected.path), parsed.options.decode);
     writeDebug(parsed.options.debug, "secret retrieved; starting target process");
     const environment = buildChildEnvironment(
       process.env,
