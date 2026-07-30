@@ -95,23 +95,23 @@ secret-wrapper run \
   -- /absolute/path/to/portainer-mcp
 ```
 
-For a Base64-encoded final text value, add `--decode ENV_NAME=base64`. To decode a complete provider value before its JSON path is traversed, add `--decode-record ENV_NAME=base64`. Both stages can apply to the same bind; decoding is always explicit.
+For a Base64-encoded final text value, add `--decode-value ENV_NAME=base64`. To decode a complete provider value before its JSON path is traversed, add `--decode-source ENV_NAME=base64`. Both stages can apply to the same bind; decoding is always explicit.
 
 ```sh
 secret-wrapper run \
   --provider bitwarden --bind PORTAINER_API_KEY=portainer.encoded-api-key \
-  --decode PORTAINER_API_KEY=base64 \
+  --decode-value PORTAINER_API_KEY=base64 \
   -- /absolute/path/to/portainer-mcp
 ```
 
-For a record that is Base64-encoded JSON and a Base64-encoded nested password, use both stages:
+For a source that is Base64-encoded JSON and a Base64-encoded nested password, use both stages:
 
 ```sh
 secret-wrapper run \
   --provider bitwarden \
   --bind PORTAINER_PASSWORD=portainer.config.credentials.password \
-  --decode-record PORTAINER_PASSWORD=base64 \
-  --decode PORTAINER_PASSWORD=base64 \
+  --decode-source PORTAINER_PASSWORD=base64 \
+  --decode-value PORTAINER_PASSWORD=base64 \
   -- /absolute/path/to/portainer-mcp
 ```
 

@@ -12,8 +12,8 @@ Use `secret-wrapper run` as the common launcher. Every provider uses the same ru
 - Keep the secret out of TOML, `.env`, shell history, and chat.
 - Use `--bind ENV_NAME=RECORD.FIELD[.JSON_PATH]` for every target variable. The selector identifies the provider record, its value, and optionally a nested JSON value. Escape a literal dot with `\.` and quote the whole bind so the shell preserves the escape.
 - Use `--scope NAME=VALUE` only for provider context such as a 1Password vault or Infisical environment.
-- Use `--decode-record ENV_NAME=base64` only when the complete value returned by the provider is deliberately Base64-encoded before JSON selection.
-- Use `--decode ENV_NAME=base64` only when the final value selected for that bind is deliberately Base64-encoded. Both stages may apply to one bind; do not infer encoding.
+- Use `--decode-source ENV_NAME=base64` only when the complete value returned by the provider is deliberately Base64-encoded before JSON selection.
+- Use `--decode-value ENV_NAME=base64` only when the final value selected for that bind is deliberately Base64-encoded. Both stages may apply to one bind; do not infer encoding.
 - Launch the target through the CLI, not directly.
 
 ## Create a wrapper

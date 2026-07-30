@@ -59,8 +59,8 @@ Replace only the provider location and the target command. Never put the secret 
 | `--provider` | Which secret system to query. |
 | `--bind` | Repeatable `ENV_NAME=SELECTOR` pair: the target variable and its provider location. |
 | `--scope` | Optional context, such as a vault, project, environment, or path. Repeat when needed. |
-| `--decode-record` | Repeatable `ENV_NAME=base64`: decode the provider's complete value before following its JSON path. |
-| `--decode` | Repeatable `ENV_NAME=base64`: decode the final value after following its JSON path. |
+| `--decode-source` | Repeatable `ENV_NAME=base64`: decode the complete provider value before following its JSON path. |
+| `--decode-value` | Repeatable `ENV_NAME=base64`: decode the final selected value after following its JSON path. |
 
 The canonical form is:
 
@@ -68,7 +68,7 @@ The canonical form is:
 secret-wrapper run \
   --provider PROVIDER \
   --bind ENV_NAME=SELECTOR [--bind ENV_NAME=SELECTOR ...] \
-  [--scope NAME=VALUE ...] [--decode-record ENV_NAME=base64 ...] [--decode ENV_NAME=base64 ...] \
+  [--scope NAME=VALUE ...] [--decode-source ENV_NAME=base64 ...] [--decode-value ENV_NAME=base64 ...] \
   -- TARGET [ARGS...]
 ```
 
@@ -117,16 +117,16 @@ secret-wrapper run \
   -- /absolute/path/to/portainer-mcp
 ```
 
-Decoding is explicit and per bind. `--decode` applies to the final selected value; `--decode-record` applies first, before a JSON path is read. They may be combined: the following accepts a Base64-encoded JSON record whose `password` property is itself Base64-encoded.
+Decoding is explicit and per bind. `--decode-source` applies first, before a JSON path is read; `--decode-value` applies to the final selected value. They may be combined: the following accepts a Base64-encoded JSON source whose `password` property is itself Base64-encoded.
 
 ```sh
 secret-wrapper run \
   --provider bitwarden \
   --bind PORTAINER_API_KEY=portainer.config.api \
   --bind PORTAINER_PASSWORD=portainer.config.credentials.password \
-  --decode-record PORTAINER_API_KEY=base64 \
-  --decode-record PORTAINER_PASSWORD=base64 \
-  --decode PORTAINER_PASSWORD=base64 \
+  --decode-source PORTAINER_API_KEY=base64 \
+  --decode-source PORTAINER_PASSWORD=base64 \
+  --decode-value PORTAINER_PASSWORD=base64 \
   -- /absolute/path/to/portainer-mcp
 ```
 

@@ -4,7 +4,7 @@ import { decodeSecret, parseSelector, selectJsonPath } from "./selector.mjs";
 
 
 const usage = `Usage:
-  secret-wrapper run --provider PROVIDER --bind ENV_NAME=SELECTOR [--bind ENV_NAME=SELECTOR ...] [--scope NAME=VALUE ...] [--decode-record ENV_NAME=base64 ...] [--decode ENV_NAME=base64 ...] [--debug] -- COMMAND [ARGS...]
+  secret-wrapper run --provider PROVIDER --bind ENV_NAME=SELECTOR [--bind ENV_NAME=SELECTOR ...] [--scope NAME=VALUE ...] [--decode-source ENV_NAME=base64 ...] [--decode-value ENV_NAME=base64 ...] [--debug] -- COMMAND [ARGS...]
 
 Providers:
   ${providerNames.join(", ")}
@@ -78,8 +78,8 @@ function parseRunArguments(arguments_) {
   }
   const options = parseOptionPairs(
     arguments_.slice(1, separator),
-    ["provider", "bind", "scope", "decode-record", "decode", "debug"],
-    ["bind", "scope", "decode-record", "decode"],
+    ["provider", "bind", "scope", "decode-source", "decode-value", "debug"],
+    ["bind", "scope", "decode-source", "decode-value"],
   );
   requireRunOptions(options);
   return {
@@ -141,19 +141,19 @@ export function parseBindings(options) {
     }
     bindings[name] = { name, selector: parseSelector(selector) };
   }
-  const decodeRecord = decodings(options["decode-record"], "--decode-record", bindings);
-  const decode = decodings(options.decode, "--decode", bindings);
+  const sourceDecoding = decodings(options["decode-source"], "--decode-source", bindings);
+  const valueDecoding = decodings(options["decode-value"], "--decode-value", bindings);
   return Object.values(bindings).map((binding) => ({
     ...binding,
-    ...(decodeRecord[binding.name] ? { decodeRecord: decodeRecord[binding.name] } : {}),
-    ...(decode[binding.name] ? { decode: decode[binding.name] } : {}),
+    ...(sourceDecoding[binding.name] ? { sourceDecode: sourceDecoding[binding.name] } : {}),
+    ...(valueDecoding[binding.name] ? { valueDecode: valueDecoding[binding.name] } : {}),
   }));
 }
 
 
 export function resolveBindingSecret(selected, binding) {
-  const record = decodeSecret(selected.value, binding.decodeRecord);
-  return decodeSecret(selectJsonPath(record, selected.path), binding.decode);
+  const source = decodeSecret(selected.value, binding.sourceDecode);
+  return decodeSecret(selectJsonPath(source, selected.path), binding.valueDecode);
 }
 
 
@@ -192,7 +192,7 @@ export async function run(arguments_) {
     if (parsed.options.debug) {
       const scopeNames = Object.keys(scope ?? {}).sort().join(", ") || "none";
       const bindingSummary = bindings.map((binding) => `${binding.name}=${binding.selector.join(".")}`).join(", ");
-      const decodingSummary = bindings.map((binding) => `${binding.name}:record=${binding.decodeRecord ?? "none"},value=${binding.decode ?? "none"}`).join("; ");
+      const decodingSummary = bindings.map((binding) => `${binding.name}:source=${binding.sourceDecode ?? "none"},value=${binding.valueDecode ?? "none"}`).join("; ");
       writeDebug(true, `provider=${parsed.options.provider}; binds=${bindingSummary}; scope=${scopeNames}; decoding=${decodingSummary}`);
     }
     writeDebug(parsed.options.debug, `retrieving ${bindings.length} secret value${bindings.length === 1 ? "" : "s"}`);

@@ -151,15 +151,15 @@ test("provider authentication is not inherited by the target process", () => {
 test("run has one provider-neutral bind contract", () => {
   assert.deepEqual(parseArguments([
     "run", "--provider", "bws", "--bind", "API_TOKEN=secret-id.value",
-    "--bind", "USERNAME=secret-id.value.user", "--decode-record", "API_TOKEN=base64",
-    "--decode", "API_TOKEN=base64", "--", "tool", "arg",
+    "--bind", "USERNAME=secret-id.value.user", "--decode-source", "API_TOKEN=base64",
+    "--decode-value", "API_TOKEN=base64", "--", "tool", "arg",
   ]), {
     action: "run",
     options: {
       provider: "bws",
       bind: ["API_TOKEN=secret-id.value", "USERNAME=secret-id.value.user"],
-      "decode-record": ["API_TOKEN=base64"],
-      decode: ["API_TOKEN=base64"],
+      "decode-source": ["API_TOKEN=base64"],
+      "decode-value": ["API_TOKEN=base64"],
     },
     command: ["tool", "arg"],
   });
@@ -174,8 +174,8 @@ test("run has one provider-neutral bind contract", () => {
     "run", "--provider", "bws", "--bind", "API_TOKEN=secret-id", "--debug", "--", "tool",
   ]).options.debug, true);
   assert.throws(() => parseArguments([
-    "run", "--provider", "bws", "--bind", "API_TOKEN=secret-id", "--decode", "OTHER=base64", "--", "tool",
-  ]), /invalid --decode/);
+    "run", "--provider", "bws", "--bind", "API_TOKEN=secret-id", "--decode-value", "OTHER=base64", "--", "tool",
+  ]), /invalid --decode-value/);
   assert.throws(() => parseArguments([
     "run", "--provider", "bws", "--bind", "API_TOKEN=secret-id", "--bind", "API_TOKEN=other", "--", "tool",
   ]), /invalid --bind/);
@@ -186,7 +186,7 @@ test("run has one provider-neutral bind contract", () => {
 });
 
 
-test("a bind can decode its record before JSON selection and its leaf afterward", () => {
+test("a bind can decode its source before JSON selection and its value afterward", () => {
   const password = Buffer.from("portainer-password").toString("base64");
   const encodedRecord = Buffer.from(JSON.stringify({
     config: { api: "plain-api-token", credentials: { password } },
@@ -196,8 +196,8 @@ test("a bind can decode its record before JSON selection and its leaf afterward"
       "PORTAINER_API_KEY=portainer.config.api",
       "PORTAINER_PASSWORD=portainer.config.credentials.password",
     ],
-    "decode-record": ["PORTAINER_API_KEY=base64", "PORTAINER_PASSWORD=base64"],
-    decode: ["PORTAINER_PASSWORD=base64"],
+    "decode-source": ["PORTAINER_API_KEY=base64", "PORTAINER_PASSWORD=base64"],
+    "decode-value": ["PORTAINER_PASSWORD=base64"],
   });
   assert.equal(resolveBindingSecret(
     { value: encodedRecord, path: ["config", "api"] },
