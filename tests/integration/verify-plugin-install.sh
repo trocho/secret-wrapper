@@ -1,8 +1,8 @@
 #!/bin/sh
 set -eu
 
-readonly marketplace="agent-secret-wrapper"
-readonly plugin="secret-process-wrapper"
+readonly marketplace="secret-wrapper"
+readonly plugin="secret-wrapper"
 readonly workspace="/workspace"
 
 fail() {
@@ -16,7 +16,7 @@ require_file() {
 
 require_installed_skill() {
   root="$1"
-  skill_path="$(find "$root" -type f -path "*/${plugin}/*/skills/secret-process-wrapper/SKILL.md" -print -quit)"
+  skill_path="$(find "$root" -type f -path "*/${plugin}/*/skills/secret-wrapper/SKILL.md" -print -quit)"
   test -n "$skill_path" || fail "installed skill was not found below $root"
   grep -Fq "## Provider recipes" "$skill_path" || fail "installed skill is missing its provider-recipes reference"
   require_file "$(dirname "$skill_path")/references/provider-recipes.md"

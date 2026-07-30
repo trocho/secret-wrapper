@@ -4,15 +4,15 @@ import { decodeSecret, parseSelector, selectJsonPath } from "./selector.mjs";
 
 
 const usage = `Usage:
-  agent-secret-wrapper run --provider PROVIDER --selector SELECTOR [--scope NAME=VALUE ...] [--decode base64] --env ENV_NAME [--debug] -- COMMAND [ARGS...]
+  secret-wrapper run --provider PROVIDER --bind ENV_NAME=SELECTOR [--bind ENV_NAME=SELECTOR ...] [--scope NAME=VALUE ...] [--decode-record ENV_NAME=base64 ...] [--decode ENV_NAME=base64 ...] [--debug] -- COMMAND [ARGS...]
 
 Providers:
   ${providerNames.join(", ")}
 
-Run always has the same shape. Selector and scope describe the location inside the selected provider.`;
+Run always has the same shape. Each bind names a target environment variable and the selector that supplies it.`;
 
 
-function parseOptionPairs(arguments_, allowed = []) {
+function parseOptionPairs(arguments_, allowed = [], repeatable = []) {
   const options = {};
   for (let index = 0; index < arguments_.length;) {
     const option = arguments_[index];
@@ -29,9 +29,9 @@ function parseOptionPairs(arguments_, allowed = []) {
     if (!option?.startsWith("--") || !value || value.startsWith("--") || !allowed.includes(name)) {
       throw new ProviderError(`invalid option: ${option ?? ""}`.trim());
     }
-    if (name === "scope") {
-      options.scope ??= [];
-      options.scope.push(value);
+    if (repeatable.includes(name)) {
+      options[name] ??= [];
+      options[name].push(value);
     } else if (options[name]) {
       throw new ProviderError(`--${name} can be supplied only once`);
     } else {
@@ -44,11 +44,8 @@ function parseOptionPairs(arguments_, allowed = []) {
 
 
 function requireRunOptions(options) {
-  if (!options.provider || !options.selector || !options.env) {
-    throw new ProviderError("--provider, --selector, and --env are required");
-  }
-  if (!/^[A-Z_][A-Z0-9_]*$/.test(options.env)) {
-    throw new ProviderError("--env must be an uppercase environment variable name");
+  if (!options.provider || !options.bind?.length) {
+    throw new ProviderError("--provider and at least one --bind are required");
   }
 }
 
@@ -79,16 +76,70 @@ export function parseArguments(arguments_) {
   if (separator === -1 || separator === arguments_.length - 1) {
     throw new ProviderError("provide the target command after --");
   }
-  const options = parseOptionPairs(arguments_.slice(1, separator), ["provider", "selector", "scope", "decode", "env", "debug"]);
+  const options = parseOptionPairs(
+    arguments_.slice(1, separator),
+    ["provider", "bind", "scope", "decode-record", "decode", "debug"],
+    ["bind", "scope", "decode-record", "decode"],
+  );
   requireRunOptions(options);
+  parseBindings(options);
   return { action: "run", options, command: arguments_.slice(separator + 1) };
 }
 
 
 function writeDebug(enabled, message) {
   if (enabled) {
-    console.error(`agent-secret-wrapper: debug: ${message}`);
+    console.error(`secret-wrapper: debug: ${message}`);
   }
+}
+
+
+function namedValue(value, option) {
+  const separator = value.indexOf("=");
+  const name = value.slice(0, separator);
+  const selectedValue = value.slice(separator + 1);
+  if (separator < 1 || !/^[A-Z_][A-Z0-9_]*$/.test(name) || !selectedValue) {
+    throw new ProviderError(`invalid ${option}: ${value}`);
+  }
+  return [name, selectedValue];
+}
+
+
+function decodings(values, option, bindings) {
+  const result = {};
+  for (const value of values ?? []) {
+    const [name, encoding] = namedValue(value, option);
+    if (!Object.hasOwn(bindings, name) || Object.hasOwn(result, name) || encoding !== "base64") {
+      throw new ProviderError(`invalid ${option}: ${value}`);
+    }
+    result[name] = encoding;
+  }
+  return result;
+}
+
+
+export function parseBindings(options) {
+  const bindings = {};
+  for (const value of options.bind ?? []) {
+    const [name, selector] = namedValue(value, "--bind");
+    if (Object.hasOwn(bindings, name)) {
+      throw new ProviderError(`invalid --bind: ${value}`);
+    }
+    bindings[name] = { name, selector: parseSelector(selector) };
+  }
+  const decodeRecord = decodings(options["decode-record"], "--decode-record", bindings);
+  const decode = decodings(options.decode, "--decode", bindings);
+  return Object.values(bindings).map((binding) => ({
+    ...binding,
+    ...(decodeRecord[binding.name] ? { decodeRecord: decodeRecord[binding.name] } : {}),
+    ...(decode[binding.name] ? { decode: decode[binding.name] } : {}),
+  }));
+}
+
+
+export function resolveBindingSecret(selected, binding) {
+  const record = decodeSecret(selected.value, binding.decodeRecord);
+  return decodeSecret(selectJsonPath(record, selected.path), binding.decode);
 }
 
 
@@ -119,27 +170,31 @@ export async function run(arguments_) {
       console.log(usage);
       return 0;
     }
-    const binding = {
-      selector: parseSelector(parsed.options.selector),
-      ...(parsed.options.scope?.length ? { scope: scopes(parsed.options.scope) } : {}),
-    };
-    const scope = Object.keys(binding.scope ?? {}).sort().join(", ") || "none";
-    writeDebug(parsed.options.debug, `provider=${parsed.options.provider}; selector=${parsed.options.selector}; scope=${scope}; decode=${parsed.options.decode ?? "none"}`);
-    writeDebug(parsed.options.debug, "retrieving one secret");
-    const selected = loadSecret(parsed.options.provider, binding);
-    const secret = decodeSecret(selectJsonPath(selected.value, selected.path), parsed.options.decode);
-    writeDebug(parsed.options.debug, "secret retrieved; starting target process");
+    const scope = parsed.options.scope?.length ? scopes(parsed.options.scope) : undefined;
+    const bindings = parseBindings(parsed.options).map((binding) => ({
+      ...binding,
+      ...(scope ? { scope } : {}),
+    }));
+    const scopeNames = Object.keys(scope ?? {}).sort().join(", ") || "none";
+    const bindingSummary = bindings.map((binding) => `${binding.name}=${binding.selector.join(".")}`).join(", ");
+    const decodingSummary = bindings.map((binding) => `${binding.name}:record=${binding.decodeRecord ?? "none"},value=${binding.decode ?? "none"}`).join("; ");
+    writeDebug(parsed.options.debug, `provider=${parsed.options.provider}; binds=${bindingSummary}; scope=${scopeNames}; decoding=${decodingSummary}`);
+    writeDebug(parsed.options.debug, `retrieving ${bindings.length} secret value${bindings.length === 1 ? "" : "s"}`);
+    const values = {};
+    for (const binding of bindings) {
+      values[binding.name] = resolveBindingSecret(loadSecret(parsed.options.provider, binding), binding);
+    }
+    writeDebug(parsed.options.debug, "secret values retrieved; starting target process");
     const environment = buildChildEnvironment(
       process.env,
       parsed.options.provider,
-      parsed.options.env,
-      secret,
+      values,
     );
     return await launch(parsed.command, environment, parsed.options.debug);
   } catch (error) {
     writeDebug(parsed?.options?.debug, "operation failed");
     const message = error instanceof Error ? error.message : "secret provider failed";
-    console.error(`agent-secret-wrapper: ${message}`);
+    console.error(`secret-wrapper: ${message}`);
     return 78;
   }
 }

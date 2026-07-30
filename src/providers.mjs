@@ -189,7 +189,7 @@ export function loadSecret(provider, binding, runCommand = execute) {
 }
 
 
-export function buildChildEnvironment(parentEnvironment, provider, name, secret) {
+export function buildChildEnvironment(parentEnvironment, provider, values) {
   const adapter = PROVIDERS[provider];
   if (!adapter) {
     throw new ProviderError(`unsupported provider: ${provider}`);
@@ -198,6 +198,6 @@ export function buildChildEnvironment(parentEnvironment, provider, name, secret)
   for (const key of adapter.scrub) {
     delete environment[key];
   }
-  environment[name] = secret;
+  Object.assign(environment, values);
   return environment;
 }

@@ -5,8 +5,8 @@ import { fileURLToPath } from "node:url";
 
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-const source = resolve(root, "skills/secret-process-wrapper");
-const target = resolve(root, "plugins/secret-process-wrapper/skills/secret-process-wrapper");
+const source = resolve(root, "skills/secret-wrapper");
+const target = resolve(root, "plugins/secret-wrapper/skills/secret-wrapper");
 const check = process.argv.includes("--check");
 
 
@@ -40,7 +40,7 @@ if (check) {
   }
   console.log("plugin skill is synchronized");
 } else {
-  const temporaryRoot = mkdtempSync(join(tmpdir(), "agent-secret-wrapper-skill-"));
+  const temporaryRoot = mkdtempSync(join(tmpdir(), "secret-wrapper-skill-"));
   const staged = join(temporaryRoot, basename(target));
   try {
     cpSync(source, staged, { recursive: true, dereference: true });

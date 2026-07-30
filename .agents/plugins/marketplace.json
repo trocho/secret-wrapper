@@ -1,14 +1,14 @@
 {
-  "name": "agent-secret-wrapper",
+  "name": "secret-wrapper",
   "interface": {
-    "displayName": "Agent Secret Wrapper"
+    "displayName": "Secret Wrapper"
   },
   "plugins": [
     {
-      "name": "secret-process-wrapper",
+      "name": "secret-wrapper",
       "source": {
         "source": "local",
-        "path": "./plugins/secret-process-wrapper"
+        "path": "./plugins/secret-wrapper"
       },
       "policy": {
         "installation": "AVAILABLE",

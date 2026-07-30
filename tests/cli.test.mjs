@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { parseArguments } from "../src/cli.mjs";
+import { parseArguments, parseBindings, resolveBindingSecret } from "../src/cli.mjs";
 import { buildChildEnvironment, loadSecret, ProviderError } from "../src/providers.mjs";
 import { decodeSecret, parseSelector, selectJsonPath } from "../src/selector.mjs";
 
@@ -139,36 +139,72 @@ test("provider authentication is not inherited by the target process", () => {
   const environment = buildChildEnvironment(
     { BWS_ACCESS_TOKEN: "machine-token", PATH: "/bin" },
     "bws",
-    "API_TOKEN",
-    "secret",
+    { API_TOKEN: "secret", USERNAME: "operator" },
   );
   assert.equal(environment.API_TOKEN, "secret");
+  assert.equal(environment.USERNAME, "operator");
   assert.equal(environment.BWS_ACCESS_TOKEN, undefined);
   assert.equal(environment.PATH, "/bin");
 });
 
 
-test("run has one provider-neutral selector contract", () => {
+test("run has one provider-neutral bind contract", () => {
   assert.deepEqual(parseArguments([
-    "run", "--provider", "bws", "--selector", "secret-id.value",
-    "--decode", "base64", "--env", "API_TOKEN", "--", "tool", "arg",
+    "run", "--provider", "bws", "--bind", "API_TOKEN=secret-id.value",
+    "--bind", "USERNAME=secret-id.value.user", "--decode-record", "API_TOKEN=base64",
+    "--decode", "API_TOKEN=base64", "--", "tool", "arg",
   ]), {
     action: "run",
-    options: { provider: "bws", selector: "secret-id.value", decode: "base64", env: "API_TOKEN" },
+    options: {
+      provider: "bws",
+      bind: ["API_TOKEN=secret-id.value", "USERNAME=secret-id.value.user"],
+      "decode-record": ["API_TOKEN=base64"],
+      decode: ["API_TOKEN=base64"],
+    },
     command: ["tool", "arg"],
   });
   assert.throws(() => parseArguments([
-    "run", "--provider", "bws", "--env", "API_TOKEN", "--", "tool",
-  ]), /--provider, --selector, and --env/);
+    "run", "--provider", "bws", "--", "tool",
+  ]), /--provider and at least one --bind/);
   assert.deepEqual(parseArguments([
-    "run", "--provider", "infisical", "--selector", "API_TOKEN.value", "--scope", "project=project",
-    "--scope", "environment=prod", "--env", "API_TOKEN", "--", "tool",
+    "run", "--provider", "infisical", "--bind", "API_TOKEN=API_TOKEN.value", "--scope", "project=project",
+    "--scope", "environment=prod", "--", "tool",
   ]).options.scope, ["project=project", "environment=prod"]);
   assert.equal(parseArguments([
-    "run", "--provider", "bws", "--selector", "secret-id", "--env", "API_TOKEN", "--debug", "--", "tool",
+    "run", "--provider", "bws", "--bind", "API_TOKEN=secret-id", "--debug", "--", "tool",
   ]).options.debug, true);
+  assert.throws(() => parseArguments([
+    "run", "--provider", "bws", "--bind", "API_TOKEN=secret-id", "--decode", "OTHER=base64", "--", "tool",
+  ]), /invalid --decode/);
+  assert.throws(() => parseArguments([
+    "run", "--provider", "bws", "--bind", "API_TOKEN=secret-id", "--bind", "API_TOKEN=other", "--", "tool",
+  ]), /invalid --bind/);
   assert.throws(() => loadSecret("bws", { selector: parseSelector("secret-id.password") }), ProviderError);
   assert.throws(() => loadSecret("1password", {
     selector: parseSelector("portainer"), scope: { project: "unexpected" },
   }), /does not support scope/);
+});
+
+
+test("a bind can decode its record before JSON selection and its leaf afterward", () => {
+  const password = Buffer.from("portainer-password").toString("base64");
+  const encodedRecord = Buffer.from(JSON.stringify({
+    config: { api: "plain-api-token", credentials: { password } },
+  })).toString("base64");
+  const bindings = parseBindings({
+    bind: [
+      "PORTAINER_API_KEY=portainer.config.api",
+      "PORTAINER_PASSWORD=portainer.config.credentials.password",
+    ],
+    "decode-record": ["PORTAINER_API_KEY=base64", "PORTAINER_PASSWORD=base64"],
+    decode: ["PORTAINER_PASSWORD=base64"],
+  });
+  assert.equal(resolveBindingSecret(
+    { value: encodedRecord, path: ["config", "api"] },
+    bindings[0],
+  ), "plain-api-token");
+  assert.equal(resolveBindingSecret(
+    { value: encodedRecord, path: ["config", "credentials", "password"] },
+    bindings[1],
+  ), "portainer-password");
 });

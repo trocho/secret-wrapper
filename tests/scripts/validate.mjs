@@ -5,9 +5,9 @@ import { fileURLToPath } from "node:url";
 
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-const plugin = resolve(root, "plugins/secret-process-wrapper");
-const rootSkill = resolve(root, "skills/secret-process-wrapper");
-const pluginSkill = resolve(plugin, "skills/secret-process-wrapper");
+const plugin = resolve(root, "plugins/secret-wrapper");
+const rootSkill = resolve(root, "skills/secret-wrapper");
+const pluginSkill = resolve(plugin, "skills/secret-wrapper");
 const codexMarketplacePath = resolve(root, ".agents/plugins/marketplace.json");
 
 
@@ -25,7 +25,7 @@ for (const path of [
   resolve(plugin, ".codex-plugin/plugin.json"),
   resolve(rootSkill, "SKILL.md"),
   resolve(root, "package.json"),
-  resolve(root, "skills/secret-process-wrapper/references/provider-recipes.md"),
+  resolve(root, "skills/secret-wrapper/references/provider-recipes.md"),
 ]) {
   require_(statSync(path).isFile(), `missing ${path}`);
 }
@@ -36,15 +36,15 @@ execFileSync(process.execPath, [resolve(root, "tests/scripts/sync-plugin-skill.m
 });
 
 const marketplace = JSON.parse(readFileSync(resolve(root, ".claude-plugin/marketplace.json")));
-require_(marketplace.plugins[0].source === "./plugins/secret-process-wrapper", "invalid Claude source");
+require_(marketplace.plugins[0].source === "./plugins/secret-wrapper", "invalid Claude source");
 const codexMarketplace = JSON.parse(readFileSync(codexMarketplacePath));
 require_(codexMarketplace.name === marketplace.name, "marketplace names must match");
 require_(codexMarketplace.plugins[0].name === marketplace.plugins[0].name, "marketplace plugins must match");
 
 const packageJson = JSON.parse(readFileSync(resolve(root, "package.json")));
-require_(packageJson.name === "@trocho/agent-secret-wrapper", "invalid npm package name");
+require_(packageJson.name === "@trocho/secret-wrapper", "invalid npm package name");
 require_(packageJson.private === true, "candidate must not publish to npm");
-require_(packageJson.bin["agent-secret-wrapper"] === "./bin/agent-secret-wrapper.mjs", "invalid CLI entrypoint");
+require_(packageJson.bin["secret-wrapper"] === "./bin/secret-wrapper.mjs", "invalid CLI entrypoint");
 
 const claudePlugin = JSON.parse(readFileSync(resolve(plugin, ".claude-plugin/plugin.json")));
 const codexPlugin = JSON.parse(readFileSync(resolve(plugin, ".codex-plugin/plugin.json")));

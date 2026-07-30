@@ -1,4 +1,4 @@
-# Agent Secret Wrapper
+# Secret Wrapper
 
 Headless local secret adapters for launching MCP servers, coding tools, and scripts.
 
@@ -11,7 +11,7 @@ MCP configuration, Compose files, and shell startup scripts often need an API to
 ```mermaid
 sequenceDiagram
     participant Caller as Launch command
-    participant Wrapper as Agent Secret Wrapper
+    participant Wrapper as Secret Wrapper
     participant Adapter as Provider adapter
     participant Provider as Secret provider
     participant Child as MCP server or target command
@@ -30,13 +30,13 @@ This is an unpublished candidate for local testing. It cannot be accidentally pu
 
 ```sh
 npm test
-node ./bin/agent-secret-wrapper.mjs --help
+node ./bin/secret-wrapper.mjs --help
 ```
 
 After publication, the same command will be available through:
 
 ```sh
-npx @trocho/agent-secret-wrapper run --help
+npx @trocho/secret-wrapper run --help
 ```
 
 ## Quick start
@@ -44,10 +44,9 @@ npx @trocho/agent-secret-wrapper run --help
 Use the same command shape for every provider. This example reads the `password` value from the Bitwarden item named `portainer` and exposes it only to the MCP process as `PORTAINER_API_KEY`.
 
 ```sh
-agent-secret-wrapper run \
+secret-wrapper run \
   --provider bitwarden \
-  --selector portainer.password \
-  --env PORTAINER_API_KEY \
+  --bind PORTAINER_API_KEY=portainer.password \
   -- /absolute/path/to/portainer-mcp
 ```
 
@@ -58,18 +57,18 @@ Replace only the provider location and the target command. Never put the secret 
 | Argument | Meaning |
 | --- | --- |
 | `--provider` | Which secret system to query. |
-| `--selector` | A dot-separated path: first the record or target, then its value, then optional JSON properties. |
+| `--bind` | Repeatable `ENV_NAME=SELECTOR` pair: the target variable and its provider location. |
 | `--scope` | Optional context, such as a vault, project, environment, or path. Repeat when needed. |
-| `--decode` | Optional explicit decoding of the selected value. Currently `base64` is supported. |
-| `--env` | The environment-variable name supplied to the target process. |
+| `--decode-record` | Repeatable `ENV_NAME=base64`: decode the provider's complete value before following its JSON path. |
+| `--decode` | Repeatable `ENV_NAME=base64`: decode the final value after following its JSON path. |
 
 The canonical form is:
 
 ```sh
-agent-secret-wrapper run \
+secret-wrapper run \
   --provider PROVIDER \
-  --selector SELECTOR [--scope NAME=VALUE ...] [--decode base64] \
-  --env ENV_NAME \
+  --bind ENV_NAME=SELECTOR [--bind ENV_NAME=SELECTOR ...] \
+  [--scope NAME=VALUE ...] [--decode-record ENV_NAME=base64 ...] [--decode ENV_NAME=base64 ...] \
   -- TARGET [ARGS...]
 ```
 
@@ -78,7 +77,7 @@ agent-secret-wrapper run \
 Install for Codex and Claude Code with [skills.sh](https://skills.sh/):
 
 ```sh
-npx skills add https://github.com/trocho/agent-secret-wrapper.git --skill secret-process-wrapper --agent codex claude-code --global
+npx skills add https://github.com/trocho/agent-secret-wrapper.git --skill secret-wrapper --agent codex claude-code --global
 ```
 
 The repository is public, so the installer can download the skill directly from GitHub.
@@ -89,12 +88,12 @@ The skill tells Codex and Claude Code to use this consistent, secret-safe comman
 
 ```text
 /plugin marketplace add git@github.com:trocho/agent-secret-wrapper.git
-/plugin install secret-process-wrapper@agent-secret-wrapper
+/plugin install secret-wrapper@secret-wrapper
 ```
 
 ## Selectors and providers
 
-A selector identifies exactly one value without a separate item/field vocabulary. Its first segment is the provider's record locator; the second is the value within that record where the provider has one. Further segments select a scalar inside a JSON value. Escape a literal dot in any segment with `\.` and quote that selector so the shell preserves the backslash.
+A selector is the right side of a bind: `ENV_NAME=SELECTOR`. It identifies one value without a separate item/field vocabulary. Its first segment is the provider's record locator; the second is the value within that record where the provider has one. Further segments select a scalar inside a JSON value. Escape a literal dot in any segment with `\.` and quote the whole bind so the shell preserves the backslash.
 
 | Provider | Value for `--provider` | Selector structure | Example |
 | --- | --- | --- | --- |
@@ -108,35 +107,49 @@ A selector identifies exactly one value without a separate item/field vocabulary
 
 For example, `portainer.config.api.token` first selects the `config` field of the `portainer` item, parses that field as JSON, then passes its `api.token` value to the target process. JSON properties may also name array indexes, such as `credentials.0.token`. The final selection must be text, a number, or a boolean.
 
-If the selected text is Base64-encoded, opt in to decoding it:
+Use as many binds as the target needs. Every bind is resolved before the target starts, so a failed lookup does not start it with a partial environment:
 
 ```sh
-agent-secret-wrapper run \
-  --provider bitwarden --selector portainer.encoded-api-key \
-  --decode base64 --env PORTAINER_API_KEY \
+secret-wrapper run \
+  --provider bitwarden \
+  --bind PORTAINER_API_KEY=portainer.api-key \
+  --bind PORTAINER_PASSWORD=portainer.password \
   -- /absolute/path/to/portainer-mcp
 ```
 
-The wrapper never guesses that a value is Base64. It decodes only when asked and rejects malformed values.
+Decoding is explicit and per bind. `--decode` applies to the final selected value; `--decode-record` applies first, before a JSON path is read. They may be combined: the following accepts a Base64-encoded JSON record whose `password` property is itself Base64-encoded.
+
+```sh
+secret-wrapper run \
+  --provider bitwarden \
+  --bind PORTAINER_API_KEY=portainer.config.api \
+  --bind PORTAINER_PASSWORD=portainer.config.credentials.password \
+  --decode-record PORTAINER_API_KEY=base64 \
+  --decode-record PORTAINER_PASSWORD=base64 \
+  --decode PORTAINER_PASSWORD=base64 \
+  -- /absolute/path/to/portainer-mcp
+```
+
+The wrapper never guesses encoding and rejects malformed Base64 or invalid JSON.
 
 For a locator with literal dots, use single quotes so the shell passes the selector unchanged:
 
 ```sh
---selector 'com\.example\.portainer.api-key'
+--bind 'PORTAINER_API_KEY=com\.example\.portainer.api-key'
 ```
 
-The same escaping applies to a Bitwarden login property: `--selector 'portainer.login\.username'`.
+The same escaping applies to a Bitwarden login property: `--bind 'PORTAINER_USER=portainer.login\.username'`.
 
-See the skill's [provider recipes](skills/secret-process-wrapper/references/provider-recipes.md) for a copy-ready command for every provider.
+See the skill's [provider recipes](skills/secret-wrapper/references/provider-recipes.md) for a copy-ready command for every provider.
 
 ## Debugging
 
-Add `--debug` before `--` to see the selected provider, selector, decoding mode, scope, retrieval stage, and target-process exit code on standard error.
+Add `--debug` before `--` to see the provider, bind names and selectors, decoding stages, scope, retrieval stage, and target-process exit code on standard error.
 
 ```sh
-agent-secret-wrapper run \
-  --provider bitwarden --selector portainer.password \
-  --env PORTAINER_API_KEY --debug \
+secret-wrapper run \
+  --provider bitwarden --bind PORTAINER_API_KEY=portainer.password \
+  --debug \
   -- /absolute/path/to/portainer-mcp
 ```
 

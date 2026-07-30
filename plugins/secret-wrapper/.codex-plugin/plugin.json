@@ -1,7 +1,7 @@
 {
-  "name": "secret-process-wrapper",
-  "version": "0.5.0-next.3",
-  "description": "Launch a coding tool with one secret from a local provider.",
+  "name": "secret-wrapper",
+  "version": "0.6.0-next.0",
+  "description": "Launch a tool with one or more values from a local secret provider.",
   "author": {
     "name": "Patryk Trochowski",
     "email": "patryk.trocho@gmail.com",
@@ -13,9 +13,9 @@
   "keywords": ["secrets", "keychain", "bitwarden", "1password", "mcp"],
   "skills": "./skills/",
   "interface": {
-    "displayName": "Secret Process Wrapper",
+    "displayName": "Secret Wrapper",
     "shortDescription": "Launch tools with a local secret.",
-    "longDescription": "Use one command across native keychains and supported secret providers.",
+    "longDescription": "Launch a target with one or more values from supported secret providers.",
     "developerName": "Patryk Trochowski",
     "category": "Developer Tools",
     "capabilities": [],
