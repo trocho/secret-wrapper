@@ -1,15 +1,22 @@
 import { spawn } from "node:child_process";
 import { buildChildEnvironment, loadSecret, ProviderError, providerNames } from "./providers.mjs";
-import { decodeSecret, parseSelector, selectJsonPath } from "./selector.mjs";
+import { evaluateSelector, parseSelector, selectorText } from "./selector.mjs";
 
 
 const usage = `Usage:
-  secret-wrapper run --provider PROVIDER --bind ENV_NAME=SELECTOR [--bind ENV_NAME=SELECTOR ...] [--scope NAME=VALUE ...] [--decode-source ENV_NAME=base64 ...] [--decode-value ENV_NAME=base64 ...] [--debug] -- COMMAND [ARGS...]
+  secret-wrapper run --provider PROVIDER --bind ENV_NAME=SELECTOR [--bind ENV_NAME=SELECTOR ...] [--scope NAME=VALUE ...] [--debug] -- COMMAND [ARGS...]
 
 Providers:
   ${providerNames.join(", ")}
 
-Run always has the same shape. Each bind names a target environment variable and the selector that supplies it.`;
+Selectors support ordered [base64] and [json] transforms; [json] is required before a JSON property.
+Run always has the same shape. Each bind names a target environment variable and the selector that supplies it. See README for provider recipes.`;
+
+
+const processControlVariables = new Set([
+  "PATH", "NODE_OPTIONS", "LD_PRELOAD", "LD_LIBRARY_PATH",
+  "DYLD_INSERT_LIBRARIES", "DYLD_LIBRARY_PATH", "PYTHONPATH", "RUBYOPT",
+]);
 
 
 function parseOptionPairs(arguments_, allowed = [], repeatable = []) {
@@ -78,8 +85,8 @@ function parseRunArguments(arguments_) {
   }
   const options = parseOptionPairs(
     arguments_.slice(1, separator),
-    ["provider", "bind", "scope", "decode-source", "decode-value", "debug"],
-    ["bind", "scope", "decode-source", "decode-value"],
+    ["provider", "bind", "scope", "debug"],
+    ["bind", "scope"],
   );
   requireRunOptions(options);
   return {
@@ -112,23 +119,11 @@ function namedValue(value, option) {
   const separator = value.indexOf("=");
   const name = value.slice(0, separator);
   const selectedValue = value.slice(separator + 1);
-  if (separator < 1 || !/^[A-Z_][A-Z0-9_]*$/.test(name) || !selectedValue) {
+  if (separator < 1 || !/^[A-Z_][A-Z0-9_]*$/.test(name) || !selectedValue
+    || (option === "--bind" && processControlVariables.has(name))) {
     throw new ProviderError(`invalid ${option}: ${value}`);
   }
   return [name, selectedValue];
-}
-
-
-function decodings(values, option, bindings) {
-  const result = {};
-  for (const value of values ?? []) {
-    const [name, encoding] = namedValue(value, option);
-    if (!Object.hasOwn(bindings, name) || Object.hasOwn(result, name) || encoding !== "base64") {
-      throw new ProviderError(`invalid ${option}: ${value}`);
-    }
-    result[name] = encoding;
-  }
-  return result;
 }
 
 
@@ -141,19 +136,12 @@ export function parseBindings(options) {
     }
     bindings[name] = { name, selector: parseSelector(selector) };
   }
-  const sourceDecoding = decodings(options["decode-source"], "--decode-source", bindings);
-  const valueDecoding = decodings(options["decode-value"], "--decode-value", bindings);
-  return Object.values(bindings).map((binding) => ({
-    ...binding,
-    ...(sourceDecoding[binding.name] ? { sourceDecode: sourceDecoding[binding.name] } : {}),
-    ...(valueDecoding[binding.name] ? { valueDecode: valueDecoding[binding.name] } : {}),
-  }));
+  return Object.values(bindings);
 }
 
 
-export function resolveBindingSecret(selected, binding) {
-  const source = decodeSecret(selected.value, binding.sourceDecode);
-  return decodeSecret(selectJsonPath(source, selected.path), binding.valueDecode);
+export function resolveBindingSecret(selected) {
+  return evaluateSelector(selected.value, selected.operations);
 }
 
 
@@ -176,7 +164,13 @@ export function launch(command, environment, debug = false) {
 }
 
 
-export async function run(arguments_) {
+export async function run(arguments_, dependencies = {}) {
+  const {
+    load = loadSecret,
+    buildEnvironment = buildChildEnvironment,
+    launchProcess = launch,
+    parentEnvironment = process.env,
+  } = dependencies;
   let parsed;
   try {
     parsed = parseRunArguments(arguments_);
@@ -191,22 +185,21 @@ export async function run(arguments_) {
     }));
     if (parsed.options.debug) {
       const scopeNames = Object.keys(scope ?? {}).sort().join(", ") || "none";
-      const bindingSummary = bindings.map((binding) => `${binding.name}=${binding.selector.join(".")}`).join(", ");
-      const decodingSummary = bindings.map((binding) => `${binding.name}:source=${binding.sourceDecode ?? "none"},value=${binding.valueDecode ?? "none"}`).join("; ");
-      writeDebug(true, `provider=${parsed.options.provider}; binds=${bindingSummary}; scope=${scopeNames}; decoding=${decodingSummary}`);
+      const bindingSummary = bindings.map((binding) => `${binding.name}=${selectorText(binding.selector)}`).join(", ");
+      writeDebug(true, `provider=${parsed.options.provider}; binds=${bindingSummary}; scope=${scopeNames}`);
     }
     writeDebug(parsed.options.debug, `retrieving ${bindings.length} secret value${bindings.length === 1 ? "" : "s"}`);
     const values = {};
     for (const binding of bindings) {
-      values[binding.name] = resolveBindingSecret(loadSecret(parsed.options.provider, binding), binding);
+      values[binding.name] = resolveBindingSecret(load(parsed.options.provider, binding));
     }
     writeDebug(parsed.options.debug, "secret values retrieved; starting target process");
-    const environment = buildChildEnvironment(
-      process.env,
+    const environment = buildEnvironment(
+      parentEnvironment,
       parsed.options.provider,
       values,
     );
-    return await launch(parsed.command, environment, parsed.options.debug);
+    return await launchProcess(parsed.command, environment, parsed.options.debug);
   } catch (error) {
     writeDebug(parsed?.options?.debug, "operation failed");
     const message = error instanceof Error ? error.message : "secret provider failed";

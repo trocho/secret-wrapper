@@ -59,8 +59,8 @@ Replace only the provider location and the target command. Never put the secret 
 | `--provider` | Which secret system to query. |
 | `--bind` | Repeatable `ENV_NAME=SELECTOR` pair: the target variable and its provider location. |
 | `--scope` | Optional context, such as a vault, project, environment, or path. Repeat when needed. |
-| `--decode-source` | Repeatable `ENV_NAME=base64`: decode the complete provider value before following its JSON path. |
-| `--decode-value` | Repeatable `ENV_NAME=base64`: decode the final selected value after following its JSON path. |
+
+`--bind` deliberately rejects process-control names such as `PATH`, `NODE_OPTIONS`, and dynamic-loader variables. Use it for credentials and target settings, not for changing how the target executable starts.
 
 The canonical form is:
 
@@ -68,7 +68,7 @@ The canonical form is:
 secret-wrapper run \
   --provider PROVIDER \
   --bind ENV_NAME=SELECTOR [--bind ENV_NAME=SELECTOR ...] \
-  [--scope NAME=VALUE ...] [--decode-source ENV_NAME=base64 ...] [--decode-value ENV_NAME=base64 ...] \
+  [--scope NAME=VALUE ...] [--debug] \
   -- TARGET [ARGS...]
 ```
 
@@ -93,19 +93,21 @@ The skill tells Codex and Claude Code to use this consistent, secret-safe comman
 
 ## Selectors and providers
 
-A selector is the right side of a bind: `ENV_NAME=SELECTOR`. It identifies one value without a separate item/field vocabulary. Its first segment is the provider's record locator; the second is the value within that record where the provider has one. Further segments select a scalar inside a JSON value. Escape a literal dot in any segment with `\.` and quote the whole bind so the shell preserves the backslash.
+A selector is the right side of a bind: `ENV_NAME=SELECTOR`. It identifies one value without a separate item/field vocabulary. Its first segment is the provider's record locator; the second is the value within that record where the provider has one. Transform annotations are attached directly to the value they transform: `[base64]` decodes text and `[json]` parses JSON text. Escape literal `.`, `\`, `[` and `]` as `\.`, `\\`, `\[` and `\]`, and quote the whole bind so the shell preserves the escape.
 
 | Provider | Value for `--provider` | Selector structure | Example |
 | --- | --- | --- | --- |
-| macOS Keychain | `macos-keychain` | `SERVICE.ACCOUNT[.JSON_PATH]` | `portainer-mcp.api-key` |
-| Linux Secret Service | `linux-secret-service` | `SERVICE.ACCOUNT[.JSON_PATH]` | `portainer-mcp.api-key` |
-| Windows Credential Manager | `windows-credential-manager` | `TARGET[.JSON_PATH]` | `portainer-mcp-api-key` |
-| Bitwarden | `bitwarden` | `ITEM.FIELD[.JSON_PATH]` | `portainer.password` |
-| Bitwarden Secrets Manager | `bws` | `SECRET_ID[.value][.JSON_PATH]` | `SECRET_ID.value` |
-| 1Password | `1password` | `ITEM.FIELD[.JSON_PATH]`; add `--scope vault=VAULT` | `portainer.api-key` |
-| Infisical | `infisical` | `SECRET_KEY[.value][.JSON_PATH]` | `PORTAINER_API_KEY.value` |
+| macOS Keychain | `macos-keychain` | `SERVICE.ACCOUNT[TRANSFORMS][.JSON_PROPERTY[TRANSFORMS]...]` | `portainer-mcp.api-key[base64]` |
+| Linux Secret Service | `linux-secret-service` | `SERVICE.ACCOUNT[TRANSFORMS][.JSON_PROPERTY[TRANSFORMS]...]` | `portainer-mcp.api-key[base64]` |
+| Windows Credential Manager | `windows-credential-manager` | `TARGET[TRANSFORMS][.JSON_PROPERTY[TRANSFORMS]...]` | `portainer-mcp-api-key[json].token` |
+| Bitwarden | `bitwarden` | `ITEM.FIELD[TRANSFORMS][.JSON_PROPERTY[TRANSFORMS]...]` | `portainer.password[base64]` |
+| Bitwarden Secrets Manager | `bws` | `SECRET_ID[.value][TRANSFORMS][.JSON_PROPERTY[TRANSFORMS]...]` | `SECRET_ID.value[base64]` |
+| 1Password | `1password` | `ITEM.FIELD[TRANSFORMS][.JSON_PROPERTY[TRANSFORMS]...]`; add `--scope vault=VAULT` | `portainer.api-key[base64]` |
+| Infisical | `infisical` | `SECRET_KEY[.value][TRANSFORMS][.JSON_PROPERTY[TRANSFORMS]...]` | `PORTAINER_API_KEY.value[base64]` |
 
-For example, `portainer.config.api.token` first selects the `config` field of the `portainer` item, parses that field as JSON, then passes its `api.token` value to the target process. JSON properties may also name array indexes, such as `credentials.0.token`. The final selection must be text, a number, or a boolean.
+`[json]` is required before JSON properties. For example, `portainer.config[json].api.token` selects the `config` field of the `portainer` item, parses it as JSON, then passes its `api.token` value to the target process. JSON properties may also name array indexes, such as `credentials.0.token`. The final selection must be text, a number, or a boolean.
+
+Bitwarden and 1Password may omit `FIELD`; it then means their default `password` field, so `portainer[base64]` is valid. Prefer the explicit `portainer.password[base64]` form in shared configuration. An annotation cannot appear before another required provider locator, so `service[base64].account` is invalid.
 
 Use as many binds as the target needs. Every bind is resolved before the target starts, so a failed lookup does not start it with a partial environment:
 
@@ -117,22 +119,19 @@ secret-wrapper run \
   -- /absolute/path/to/portainer-mcp
 ```
 
-Decoding is explicit and per bind. `--decode-source` applies first, before a JSON path is read; `--decode-value` applies to the final selected value. They may be combined: the following accepts a Base64-encoded JSON source whose `password` property is itself Base64-encoded.
+Transforms run from left to right. `[base64][json]` means “decode the text, then parse the decoded text as JSON”; `[json][base64]` means “parse a JSON string, then decode that string as Base64.” Use the order that matches the stored value. This command accepts a Base64-encoded JSON source whose nested `password` is another Base64-encoded JSON value with a Base64 `key`.
 
 ```sh
 secret-wrapper run \
   --provider bitwarden \
-  --bind PORTAINER_API_KEY=portainer.config.api \
-  --bind PORTAINER_PASSWORD=portainer.config.credentials.password \
-  --decode-source PORTAINER_API_KEY=base64 \
-  --decode-source PORTAINER_PASSWORD=base64 \
-  --decode-value PORTAINER_PASSWORD=base64 \
+  --bind 'PORTAINER_API_KEY=portainer.config[base64][json].api' \
+  --bind 'PORTAINER_PASSWORD=portainer.config[base64][json].credentials.password[base64][json].key[base64]' \
   -- /absolute/path/to/portainer-mcp
 ```
 
-The wrapper never guesses encoding and rejects malformed Base64 or invalid JSON.
+The wrapper never guesses encoding and rejects malformed Base64, invalid JSON, impossible transform order, or JSON traversal without `[json]`.
 
-For a locator with literal dots, use single quotes so the shell passes the selector unchanged:
+For a locator with literal dots or brackets, use single quotes so the shell passes the selector unchanged:
 
 ```sh
 --bind 'PORTAINER_API_KEY=com\.example\.portainer.api-key'
@@ -144,7 +143,7 @@ See the skill's [provider recipes](skills/secret-wrapper/references/provider-rec
 
 ## Debugging
 
-Add `--debug` before `--` to see the provider, bind names and selectors, decoding stages, scope, retrieval stage, and target-process exit code on standard error.
+Add `--debug` before `--` to see the provider, bind names and selectors, transform order, scope, retrieval stage, and target-process exit code on standard error.
 
 ```sh
 secret-wrapper run \

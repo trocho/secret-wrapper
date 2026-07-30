@@ -5,15 +5,14 @@ description: Configure the headless Secret Wrapper CLI to launch an MCP server, 
 
 # Secret Wrapper
 
-Use `secret-wrapper run` as the common launcher. Every provider uses the same runtime contract: provider, one or more binds, optional scope and decoding, and command.
+Use `secret-wrapper run` as the common launcher. Every provider uses the same runtime contract: provider, one or more binds, optional scope, and command.
 
 ## Standard
 
 - Keep the secret out of TOML, `.env`, shell history, and chat.
-- Use `--bind ENV_NAME=RECORD.FIELD[.JSON_PATH]` for every target variable. The selector identifies the provider record, its value, and optionally a nested JSON value. Escape a literal dot with `\.` and quote the whole bind so the shell preserves the escape.
+- Use `--bind 'ENV_NAME=RECORD.FIELD[TRANSFORMS][.JSON_PROPERTY[TRANSFORMS]...]'` for every target variable. `[base64]` decodes text and `[json]` parses JSON text; transforms run from left to right and `[json]` is required before a JSON property. Escape literal `.`, `\`, `[` and `]` as `\.`, `\\`, `\[` and `\]` and quote the whole bind so the shell preserves the escape. Bitwarden and 1Password may omit `FIELD` only for their default `password`; prefer the explicit field in shared configuration.
 - Use `--scope NAME=VALUE` only for provider context such as a 1Password vault or Infisical environment.
-- Use `--decode-source ENV_NAME=base64` only when the complete value returned by the provider is deliberately Base64-encoded before JSON selection.
-- Use `--decode-value ENV_NAME=base64` only when the final value selected for that bind is deliberately Base64-encoded. Both stages may apply to one bind; do not infer encoding.
+- Do not bind `PATH`, `NODE_OPTIONS`, or dynamic-loader variables; the launcher rejects process-control names.
 - Launch the target through the CLI, not directly.
 
 ## Create a wrapper
@@ -34,4 +33,4 @@ When configuring a specific provider, read [references/provider-recipes.md](refe
 
 Run a non-destructive startup check. Do not print the secret or use a target command that exposes its environment. Missing provider data must fail with exit code 78; do not reset provider credentials or persist the secret outside its provider.
 
-For diagnosis, add `--debug` before `--`. Share only its metadata and lifecycle output; it must not contain a secret value.
+For diagnosis, add `--debug` before `--`. Share only its metadata and lifecycle output; it must not contain a secret value. See [references/provider-recipes.md](references/provider-recipes.md) for transform-order examples.
