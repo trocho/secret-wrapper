@@ -17,5 +17,5 @@ jobs:
       - run: npm run validate
       - run: npm run pack:check
       - run: npx --yes skills add . --list
-      - run: zip -r secret-process-wrapper-plugin.zip plugins/secret-process-wrapper
+      - run: zip -r secret-wrapper-plugin.zip plugins/secret-wrapper
       - run: npm run test:plugin-install
