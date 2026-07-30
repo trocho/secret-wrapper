@@ -22,6 +22,8 @@ for (const path of [
   resolve(plugin, ".codex-plugin/plugin.json"),
   resolve(rootSkill, "SKILL.md"),
   resolve(root, "package.json"),
+  resolve(root, "src/config.mjs"),
+  resolve(root, "docs/provider-configuration.md"),
 ]) {
   require_(statSync(path).isFile(), `missing ${path}`);
 }

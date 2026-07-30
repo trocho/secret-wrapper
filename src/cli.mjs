@@ -1,9 +1,10 @@
 import { spawn } from "node:child_process";
-import { buildChildEnvironment, loadSecret, ProviderError, providerNames } from "./providers.mjs";
+import { loadConfiguration } from "./config.mjs";
+import { buildChildEnvironment, loadSecret, ProviderError, providerNames, resolveBinding } from "./providers.mjs";
 
 
 const usage = `Usage:
-  agent-secret-wrapper run --provider PROVIDER --env ENV_NAME [provider options] -- COMMAND [ARGS...]
+  agent-secret-wrapper run --provider PROVIDER --env ENV_NAME -- COMMAND [ARGS...]
 
 Providers:
   ${providerNames.join(", ")}`;
@@ -35,6 +36,11 @@ export function parseArguments(arguments_) {
   if (!/^[A-Z_][A-Z0-9_]*$/.test(options.env)) {
     throw new ProviderError("--env must be an uppercase environment variable name");
   }
+  for (const option of Object.keys(options)) {
+    if (!["provider", "env"].includes(option)) {
+      throw new ProviderError(`run does not accept --${option}; configure the provider once instead`);
+    }
+  }
   return { options, command: arguments_.slice(separator + 1) };
 }
 
@@ -60,7 +66,9 @@ export async function run(arguments_) {
       console.log(usage);
       return 0;
     }
-    const secret = loadSecret(parsed.options.provider, parsed.options);
+    const configuration = loadConfiguration();
+    const binding = resolveBinding(parsed.options.provider, parsed.options.env, configuration.providers);
+    const secret = loadSecret(parsed.options.provider, binding);
     const environment = buildChildEnvironment(
       process.env,
       parsed.options.provider,

@@ -1,6 +1,6 @@
 {
   "name": "@trocho/agent-secret-wrapper",
-  "version": "0.2.0-next.0",
+  "version": "0.3.0-next.0",
   "description": "Headless local secret adapters for launching coding tools and MCP servers.",
   "private": true,
   "type": "module",
@@ -10,7 +10,8 @@
   "files": [
     "bin",
     "src",
-    "skills"
+    "skills",
+    "docs"
   ],
   "scripts": {
     "test": "node --test tests/*.test.mjs",

@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { configurationPath, loadConfiguration } from "../src/config.mjs";
 import { parseArguments } from "../src/cli.mjs";
-import { buildChildEnvironment, loadSecret, ProviderError } from "../src/providers.mjs";
+import { buildChildEnvironment, defaultBinding, loadSecret, ProviderError, resolveBinding } from "../src/providers.mjs";
 
 
-test("macOS Keychain adapter requests service and account", () => {
+test("macOS Keychain adapter requests the configured service and account", () => {
   const calls = [];
   const secret = loadSecret("macos-keychain", { service: "service", account: "account" }, (command, arguments_) => {
     calls.push([command, arguments_]);
@@ -45,7 +46,7 @@ test("Bitwarden Password Manager adapter reads one item", () => {
 
 
 test("Bitwarden Secrets Manager adapter reads the value field", () => {
-  const secret = loadSecret("bws", { "secret-id": "secret-id" }, (command, arguments_) => {
+  const secret = loadSecret("bws", { secretId: "secret-id" }, (command, arguments_) => {
     assert.equal(command, "bws");
     assert.deepEqual(arguments_, ["secret", "get", "secret-id", "--output", "json"]);
     return '{"value":"token"}';
@@ -66,8 +67,8 @@ test("1Password adapter reads a secret reference", () => {
 
 test("Infisical adapter requests one named secret", () => {
   const secret = loadSecret("infisical", {
-    "secret-key": "API_TOKEN",
-    "project-id": "project",
+    secretKey: "API_TOKEN",
+    projectId: "project",
     environment: "prod",
     path: "/mcp",
   }, (command, arguments_) => {
@@ -95,15 +96,43 @@ test("provider authentication is not inherited by the target process", () => {
 });
 
 
-test("the CLI requires a provider, environment variable, and target command", () => {
+test("the CLI accepts one common run contract", () => {
   assert.throws(() => parseArguments(["run", "--provider", "bws"]), ProviderError);
   assert.throws(() => parseArguments([
     "run", "--provider", "bws", "--env", "lowercase", "--", "tool",
   ]), /uppercase/);
+  assert.throws(() => parseArguments([
+    "run", "--provider", "bws", "--env", "API_TOKEN", "--secret-id", "id", "--", "tool",
+  ]), /does not accept/);
   assert.deepEqual(parseArguments([
-    "run", "--provider", "bws", "--env", "API_TOKEN", "--secret-id", "id", "--", "tool", "arg",
+    "run", "--provider", "bws", "--env", "API_TOKEN", "--", "tool", "arg",
   ]), {
-    options: { provider: "bws", env: "API_TOKEN", "secret-id": "id" },
+    options: { provider: "bws", env: "API_TOKEN" },
     command: ["tool", "arg"],
   });
+});
+
+
+test("providers use a common logical secret name", () => {
+  assert.deepEqual(defaultBinding("macos-keychain", "API_TOKEN"), {
+    service: "agent-secret-wrapper", account: "API_TOKEN",
+  });
+  assert.deepEqual(defaultBinding("bitwarden", "API_TOKEN"), { item: "API_TOKEN" });
+  assert.deepEqual(resolveBinding("bws", "API_TOKEN", {
+    bws: { API_TOKEN: { secretId: "secret-id" } },
+  }), { secretId: "secret-id" });
+  assert.throws(() => resolveBinding("bws", "API_TOKEN", {}), /configure bws/);
+});
+
+
+test("configuration stores bindings without secret values", () => {
+  const path = configurationPath({ XDG_CONFIG_HOME: "/config" }, "linux", "/home/test");
+  assert.equal(path, "/config/agent-secret-wrapper/providers.json");
+  const configuration = loadConfiguration({
+    environment: { AGENT_SECRET_WRAPPER_CONFIG: "/tmp/providers.json" },
+    readFile: () => JSON.stringify({
+      providers: { bws: { API_TOKEN: { secretId: "secret-id" } } },
+    }),
+  });
+  assert.deepEqual(configuration.providers.bws.API_TOKEN, { secretId: "secret-id" });
 });

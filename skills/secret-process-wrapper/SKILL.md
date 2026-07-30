@@ -5,12 +5,13 @@ description: Configure the headless Agent Secret Wrapper CLI to launch an MCP se
 
 # Secret Process Wrapper
 
-Use `agent-secret-wrapper run` as the common launcher. It accepts one target environment-variable name, a provider, and the command to start.
+Use `agent-secret-wrapper run` as the common launcher. Every provider uses the same runtime contract: a provider, one logical secret name, and the command to start.
 
 ## Standard
 
 - Keep the secret out of TOML, `.env`, shell history, and chat.
-- Use a stable, non-secret provider reference.
+- Use `--env` as both the logical secret name and the target environment-variable name.
+- Configure a provider binding once only when its default naming convention does not fit.
 - Launch the target through the CLI, not directly.
 
 ## Create a wrapper
@@ -18,12 +19,11 @@ Use `agent-secret-wrapper run` as the common launcher. It accepts one target env
 ```zsh
 agent-secret-wrapper run \
   --provider macos-keychain \
-  --service codex-example-mcp-token --account api-key \
   --env EXAMPLE_API_KEY \
   -- /absolute/path/to/example-mcp "$@"
 ```
 
-Supported providers are `macos-keychain`, `linux-secret-service`, `windows-credential-manager`, `bitwarden`, `bws`, `1password`, and `infisical`.
+Supported providers are `macos-keychain`, `linux-secret-service`, `windows-credential-manager`, `bitwarden`, `bws`, `1password`, and `infisical`. Do not add provider-specific flags to `run`.
 
 ## Verify
 

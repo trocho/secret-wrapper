@@ -4,10 +4,10 @@ import { spawnSync } from "node:child_process";
 export class ProviderError extends Error {}
 
 
-function requireOption(options, name, provider) {
-  const value = options[name];
+function requireBinding(binding, name, provider) {
+  const value = binding[name];
   if (!value) {
-    throw new ProviderError(`${provider} requires --${name}`);
+    throw new ProviderError(`${provider} requires ${name} in its local configuration`);
   }
   return value;
 }
@@ -30,26 +30,26 @@ export function execute(command, arguments_) {
 }
 
 
-function fromMacosKeychain(options, runCommand) {
-  const service = requireOption(options, "service", "macos-keychain");
-  const account = requireOption(options, "account", "macos-keychain");
+function fromMacosKeychain(binding, runCommand) {
+  const service = requireBinding(binding, "service", "macos-keychain");
+  const account = requireBinding(binding, "account", "macos-keychain");
   return trimNewline(runCommand("security", [
     "find-generic-password", "-s", service, "-a", account, "-w",
   ]));
 }
 
 
-function fromLinuxSecretService(options, runCommand) {
-  const service = requireOption(options, "service", "linux-secret-service");
-  const account = requireOption(options, "account", "linux-secret-service");
+function fromLinuxSecretService(binding, runCommand) {
+  const service = requireBinding(binding, "service", "linux-secret-service");
+  const account = requireBinding(binding, "account", "linux-secret-service");
   return trimNewline(runCommand("secret-tool", [
     "lookup", "service", service, "account", account,
   ]));
 }
 
 
-function fromWindowsCredentialManager(options, runCommand) {
-  const target = requireOption(options, "target", "windows-credential-manager");
+function fromWindowsCredentialManager(binding, runCommand) {
+  const target = requireBinding(binding, "target", "windows-credential-manager");
   const escapedTarget = target.replaceAll("'", "''");
   const script = [
     `$c=Get-StoredCredential -Target '${escapedTarget}'`,
@@ -62,14 +62,14 @@ function fromWindowsCredentialManager(options, runCommand) {
 }
 
 
-function fromBitwarden(options, runCommand) {
-  const item = requireOption(options, "item", "bitwarden");
+function fromBitwarden(binding, runCommand) {
+  const item = requireBinding(binding, "item", "bitwarden");
   return trimNewline(runCommand("bw", ["get", "password", item]));
 }
 
 
-function fromBws(options, runCommand) {
-  const secretId = requireOption(options, "secret-id", "bws");
+function fromBws(binding, runCommand) {
+  const secretId = requireBinding(binding, "secretId", "bws");
   let payload;
   try {
     payload = JSON.parse(runCommand("bws", [
@@ -85,22 +85,22 @@ function fromBws(options, runCommand) {
 }
 
 
-function fromOnePassword(options, runCommand) {
-  const reference = requireOption(options, "reference", "1password");
+function fromOnePassword(binding, runCommand) {
+  const reference = requireBinding(binding, "reference", "1password");
   return trimNewline(runCommand("op", ["read", reference]));
 }
 
 
-function fromInfisical(options, runCommand) {
-  const key = requireOption(options, "secret-key", "infisical");
+function fromInfisical(binding, runCommand) {
+  const key = requireBinding(binding, "secretKey", "infisical");
   const arguments_ = ["secrets", "get", key, "--plain", "--silent"];
   for (const [option, flag] of [
-    ["project-id", "--projectId"],
+    ["projectId", "--projectId"],
     ["environment", "--env"],
     ["path", "--path"],
   ]) {
-    if (options[option]) {
-      arguments_.push(`${flag}=${options[option]}`);
+    if (binding[option]) {
+      arguments_.push(`${flag}=${binding[option]}`);
     }
   }
   return trimNewline(runCommand("infisical", arguments_));
@@ -124,12 +124,42 @@ const PROVIDERS = {
 export const providerNames = Object.keys(PROVIDERS);
 
 
-export function loadSecret(provider, options, runCommand = execute) {
+export function defaultBinding(provider, name) {
+  switch (provider) {
+    case "macos-keychain":
+    case "linux-secret-service":
+      return { service: "agent-secret-wrapper", account: name };
+    case "windows-credential-manager":
+      return { target: `agent-secret-wrapper/${name}` };
+    case "bitwarden":
+      return { item: name };
+    case "1password":
+      return { reference: `op://agent-secret-wrapper/${name}/password` };
+    case "infisical":
+      return { secretKey: name };
+    case "bws":
+      return null;
+    default:
+      throw new ProviderError(`unsupported provider: ${provider}`);
+  }
+}
+
+
+export function resolveBinding(provider, name, providers) {
+  const binding = providers?.[provider]?.[name] ?? defaultBinding(provider, name);
+  if (!binding || typeof binding !== "object" || Array.isArray(binding)) {
+    throw new ProviderError(`configure ${provider} for ${name} before running it`);
+  }
+  return binding;
+}
+
+
+export function loadSecret(provider, binding, runCommand = execute) {
   const adapter = PROVIDERS[provider];
   if (!adapter) {
     throw new ProviderError(`unsupported provider: ${provider}`);
   }
-  return adapter.load(options, runCommand);
+  return adapter.load(binding, runCommand);
 }
 
 
