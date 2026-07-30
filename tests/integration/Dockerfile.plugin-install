@@ -1,0 +1,14 @@
+FROM node:22-bookworm-slim
+
+ARG CODEX_VERSION=0.145.0
+ARG CLAUDE_CODE_VERSION=2.1.78
+
+RUN npm install --global "@openai/codex@${CODEX_VERSION}" "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}" \
+    && useradd --create-home --shell /bin/sh verifier
+
+USER verifier
+WORKDIR /workspace
+
+COPY --chown=verifier:verifier . /workspace
+
+ENTRYPOINT ["/workspace/tests/integration/verify-plugin-install.sh"]

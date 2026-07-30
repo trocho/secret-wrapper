@@ -1,4 +1,5 @@
-import { lstatSync, readFileSync, realpathSync, statSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { readFileSync, statSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -27,9 +28,10 @@ for (const path of [
   require_(statSync(path).isFile(), `missing ${path}`);
 }
 
-require_(lstatSync(pluginSkill).isSymbolicLink(), "plugin skill must be a symlink");
-require_(realpathSync(pluginSkill) === realpathSync(rootSkill), "plugin skill must point at the root skill");
-require_(statSync(pluginSkill).isDirectory(), "plugin skill symlink must resolve to a directory");
+require_(statSync(pluginSkill).isDirectory(), "plugin skill must be a directory");
+execFileSync(process.execPath, [resolve(root, "tests/scripts/sync-plugin-skill.mjs"), "--check"], {
+  stdio: "inherit",
+});
 
 const marketplace = JSON.parse(readFileSync(resolve(root, ".claude-plugin/marketplace.json")));
 require_(marketplace.plugins[0].source === "./plugins/secret-process-wrapper", "invalid Claude source");

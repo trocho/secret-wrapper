@@ -19,6 +19,7 @@ jobs:
       - run: npm run validate
       - run: npm pack
       - run: zip -r secret-process-wrapper-plugin.zip plugins/secret-process-wrapper
+      - run: npm run test:plugin-install
       - run: gh release create "$GITHUB_REF_NAME" *.tgz secret-process-wrapper-plugin.zip --generate-notes
         env:
           GH_TOKEN: ${{ github.token }}
