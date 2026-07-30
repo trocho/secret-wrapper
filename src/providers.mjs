@@ -13,6 +13,20 @@ function requireBinding(binding, name, provider) {
 }
 
 
+function scopeValue(binding, name) {
+  return binding.scope?.[name];
+}
+
+
+function rejectUnexpectedScope(binding, allowed, provider) {
+  for (const name of Object.keys(binding.scope ?? {})) {
+    if (!allowed.includes(name)) {
+      throw new ProviderError(`${provider} does not support scope ${name}`);
+    }
+  }
+}
+
+
 function trimNewline(value) {
   return value.replace(/\r?\n$/, "");
 }
@@ -31,8 +45,9 @@ export function execute(command, arguments_) {
 
 
 function fromMacosKeychain(binding, runCommand) {
-  const service = requireBinding(binding, "service", "macos-keychain");
-  const account = requireBinding(binding, "account", "macos-keychain");
+  rejectUnexpectedScope(binding, [], "macos-keychain");
+  const service = requireBinding(binding, "item", "macos-keychain");
+  const account = requireBinding(binding, "field", "macos-keychain");
   return trimNewline(runCommand("security", [
     "find-generic-password", "-s", service, "-a", account, "-w",
   ]));
@@ -40,8 +55,9 @@ function fromMacosKeychain(binding, runCommand) {
 
 
 function fromLinuxSecretService(binding, runCommand) {
-  const service = requireBinding(binding, "service", "linux-secret-service");
-  const account = requireBinding(binding, "account", "linux-secret-service");
+  rejectUnexpectedScope(binding, [], "linux-secret-service");
+  const service = requireBinding(binding, "item", "linux-secret-service");
+  const account = requireBinding(binding, "field", "linux-secret-service");
   return trimNewline(runCommand("secret-tool", [
     "lookup", "service", service, "account", account,
   ]));
@@ -49,7 +65,11 @@ function fromLinuxSecretService(binding, runCommand) {
 
 
 function fromWindowsCredentialManager(binding, runCommand) {
-  const target = requireBinding(binding, "target", "windows-credential-manager");
+  rejectUnexpectedScope(binding, [], "windows-credential-manager");
+  if (binding.field) {
+    throw new ProviderError("windows-credential-manager has no selectable field");
+  }
+  const target = requireBinding(binding, "item", "windows-credential-manager");
   const escapedTarget = target.replaceAll("'", "''");
   const script = [
     `$c=Get-StoredCredential -Target '${escapedTarget}'`,
@@ -63,13 +83,34 @@ function fromWindowsCredentialManager(binding, runCommand) {
 
 
 function fromBitwarden(binding, runCommand) {
+  rejectUnexpectedScope(binding, [], "bitwarden");
   const item = requireBinding(binding, "item", "bitwarden");
-  return trimNewline(runCommand("bw", ["get", "password", item]));
+  const field = binding.field ?? "password";
+  if (["password", "username", "uri", "totp"].includes(field)) {
+    return trimNewline(runCommand("bw", ["get", field, item]));
+  }
+  let payload;
+  try {
+    payload = JSON.parse(runCommand("bw", ["get", "item", item]));
+  } catch {
+    throw new ProviderError("bitwarden did not return the requested item field");
+  }
+  const value = field.startsWith("login.")
+    ? payload.login?.[field.slice("login.".length)]
+    : payload.fields?.find((entry) => entry.name === field)?.value;
+  if (typeof value !== "string") {
+    throw new ProviderError("bitwarden did not return the requested item field");
+  }
+  return value;
 }
 
 
 function fromBws(binding, runCommand) {
-  const secretId = requireBinding(binding, "secretId", "bws");
+  rejectUnexpectedScope(binding, [], "bws");
+  const secretId = requireBinding(binding, "item", "bws");
+  if (binding.field && binding.field !== "value") {
+    throw new ProviderError("bws supports only the value field");
+  }
   let payload;
   try {
     payload = JSON.parse(runCommand("bws", [
@@ -86,21 +127,32 @@ function fromBws(binding, runCommand) {
 
 
 function fromOnePassword(binding, runCommand) {
-  const reference = requireBinding(binding, "reference", "1password");
+  rejectUnexpectedScope(binding, ["vault"], "1password");
+  const vault = scopeValue(binding, "vault");
+  const item = requireBinding(binding, "item", "1password");
+  const field = binding.field ?? "password";
+  if (!vault) {
+    throw new ProviderError("1password requires scope vault in its binding");
+  }
+  const reference = `op://${vault}/${item}/${field}`;
   return trimNewline(runCommand("op", ["read", reference]));
 }
 
 
 function fromInfisical(binding, runCommand) {
-  const key = requireBinding(binding, "secretKey", "infisical");
+  rejectUnexpectedScope(binding, ["project", "environment", "path"], "infisical");
+  const key = requireBinding(binding, "item", "infisical");
+  if (binding.field && binding.field !== "value") {
+    throw new ProviderError("infisical supports only the value field");
+  }
   const arguments_ = ["secrets", "get", key, "--plain", "--silent"];
   for (const [option, flag] of [
-    ["projectId", "--projectId"],
+    ["project", "--projectId"],
     ["environment", "--env"],
     ["path", "--path"],
   ]) {
-    if (binding[option]) {
-      arguments_.push(`${flag}=${binding[option]}`);
+    if (scopeValue(binding, option)) {
+      arguments_.push(`${flag}=${scopeValue(binding, option)}`);
     }
   }
   return trimNewline(runCommand("infisical", arguments_));
@@ -122,36 +174,6 @@ const PROVIDERS = {
 
 
 export const providerNames = Object.keys(PROVIDERS);
-
-
-export function defaultBinding(provider, name) {
-  switch (provider) {
-    case "macos-keychain":
-    case "linux-secret-service":
-      return { service: "agent-secret-wrapper", account: name };
-    case "windows-credential-manager":
-      return { target: `agent-secret-wrapper/${name}` };
-    case "bitwarden":
-      return { item: name };
-    case "1password":
-      return { reference: `op://agent-secret-wrapper/${name}/password` };
-    case "infisical":
-      return { secretKey: name };
-    case "bws":
-      return null;
-    default:
-      throw new ProviderError(`unsupported provider: ${provider}`);
-  }
-}
-
-
-export function resolveBinding(provider, name, providers) {
-  const binding = providers?.[provider]?.[name] ?? defaultBinding(provider, name);
-  if (!binding || typeof binding !== "object" || Array.isArray(binding)) {
-    throw new ProviderError(`configure ${provider} for ${name} before running it`);
-  }
-  return binding;
-}
 
 
 export function loadSecret(provider, binding, runCommand = execute) {

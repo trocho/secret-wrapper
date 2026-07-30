@@ -1,13 +1,61 @@
 import { spawn } from "node:child_process";
-import { loadConfiguration } from "./config.mjs";
-import { buildChildEnvironment, loadSecret, ProviderError, providerNames, resolveBinding } from "./providers.mjs";
+import { buildChildEnvironment, loadSecret, ProviderError, providerNames } from "./providers.mjs";
 
 
 const usage = `Usage:
-  agent-secret-wrapper run --provider PROVIDER --env ENV_NAME -- COMMAND [ARGS...]
+  agent-secret-wrapper run --provider PROVIDER --item ITEM [--field FIELD] [--scope NAME=VALUE ...] --env ENV_NAME -- COMMAND [ARGS...]
 
 Providers:
-  ${providerNames.join(", ")}`;
+  ${providerNames.join(", ")}
+
+Run always has the same shape. Item, field, and scope describe the location inside the selected provider.`;
+
+
+function parseOptionPairs(arguments_, allowed = []) {
+  const options = {};
+  for (let index = 0; index < arguments_.length; index += 2) {
+    const option = arguments_[index];
+    const value = arguments_[index + 1];
+    const name = option?.slice(2);
+    if (!option?.startsWith("--") || !value || value.startsWith("--") || !allowed.includes(name)) {
+      throw new ProviderError(`invalid option: ${option ?? ""}`.trim());
+    }
+    if (name === "scope") {
+      options.scope ??= [];
+      options.scope.push(value);
+    } else if (options[name]) {
+      throw new ProviderError(`--${name} can be supplied only once`);
+    } else {
+      options[name] = value;
+    }
+  }
+  return options;
+}
+
+
+function requireRunOptions(options) {
+  if (!options.provider || !options.item || !options.env) {
+    throw new ProviderError("--provider, --item, and --env are required");
+  }
+  if (!/^[A-Z_][A-Z0-9_]*$/.test(options.env)) {
+    throw new ProviderError("--env must be an uppercase environment variable name");
+  }
+}
+
+
+function scopes(values = []) {
+  const scope = {};
+  for (const value of values) {
+    const separator = value.indexOf("=");
+    const name = value.slice(0, separator);
+    const scopedValue = value.slice(separator + 1);
+    if (separator < 1 || !/^[a-z][a-z0-9-]*$/.test(name) || !scopedValue || Object.hasOwn(scope, name)) {
+      throw new ProviderError(`invalid scope: ${value}`);
+    }
+    scope[name] = scopedValue;
+  }
+  return scope;
+}
 
 
 export function parseArguments(arguments_) {
@@ -21,27 +69,9 @@ export function parseArguments(arguments_) {
   if (separator === -1 || separator === arguments_.length - 1) {
     throw new ProviderError("provide the target command after --");
   }
-  const options = {};
-  for (let index = 1; index < separator; index += 2) {
-    const option = arguments_[index];
-    const value = arguments_[index + 1];
-    if (!option?.startsWith("--") || !value || value.startsWith("--")) {
-      throw new ProviderError(`invalid option: ${option ?? ""}`.trim());
-    }
-    options[option.slice(2)] = value;
-  }
-  if (!options.provider || !options.env) {
-    throw new ProviderError("--provider and --env are required");
-  }
-  if (!/^[A-Z_][A-Z0-9_]*$/.test(options.env)) {
-    throw new ProviderError("--env must be an uppercase environment variable name");
-  }
-  for (const option of Object.keys(options)) {
-    if (!["provider", "env"].includes(option)) {
-      throw new ProviderError(`run does not accept --${option}; configure the provider once instead`);
-    }
-  }
-  return { options, command: arguments_.slice(separator + 1) };
+  const options = parseOptionPairs(arguments_.slice(1, separator), ["provider", "item", "field", "scope", "env"]);
+  requireRunOptions(options);
+  return { action: "run", options, command: arguments_.slice(separator + 1) };
 }
 
 
@@ -66,8 +96,11 @@ export async function run(arguments_) {
       console.log(usage);
       return 0;
     }
-    const configuration = loadConfiguration();
-    const binding = resolveBinding(parsed.options.provider, parsed.options.env, configuration.providers);
+    const binding = {
+      item: parsed.options.item,
+      ...(parsed.options.field ? { field: parsed.options.field } : {}),
+      ...(parsed.options.scope?.length ? { scope: scopes(parsed.options.scope) } : {}),
+    };
     const secret = loadSecret(parsed.options.provider, binding);
     const environment = buildChildEnvironment(
       process.env,

@@ -39,17 +39,39 @@ After publication, the same command will be available through:
 npx @trocho/agent-secret-wrapper run --help
 ```
 
-## Use
+## Quick start
 
-Every provider has the same runtime API. `--env` is both the logical secret name and the environment variable passed to the target command. Replace the target with the MCP server, tool, or script you want to start.
+Use the same command shape for every provider. This example reads the `password` field from the Bitwarden item named `portainer` and exposes it only to the MCP process as `PORTAINER_API_KEY`.
 
 ```sh
 agent-secret-wrapper run \
-  --provider PROVIDER --env ENV_NAME \
-  -- TARGET [ARGS...]
+  --provider bitwarden \
+  --item portainer --field password \
+  --env PORTAINER_API_KEY \
+  -- /absolute/path/to/portainer-mcp
 ```
 
-Provider-specific identifiers are not passed to `run`. When a default naming convention does not fit, bind `ENV_NAME` to the provider once in [provider configuration](docs/provider-configuration.md). The binding contains only identifiers, never secret values.
+Replace only the provider location and the target command. Never put the secret value into the command or shell history.
+
+## Command model
+
+| Argument | Meaning |
+| --- | --- |
+| `--provider` | Which secret system to query. |
+| `--item` | The record, entry, or secret to read. |
+| `--field` | A value inside that record; omit it when the provider has a single value. |
+| `--scope` | Optional context, such as a vault, project, environment, or path. Repeat when needed. |
+| `--env` | The environment-variable name supplied to the target process. |
+
+The canonical form is:
+
+```sh
+agent-secret-wrapper run \
+  --provider PROVIDER \
+  --item ITEM [--field FIELD] [--scope NAME=VALUE ...] \
+  --env ENV_NAME \
+  -- TARGET [ARGS...]
+```
 
 ## Install the skill
 
@@ -70,21 +92,17 @@ The repository is private for now, so the installer needs SSH access to `trocho/
 
 ## Providers
 
-| Provider | Value for `--provider` | Run example | Status |
+| Provider | Value for `--provider` | `--item` means | `--field` means |
 | --- | --- | --- | --- |
-| macOS Keychain | `macos-keychain` | `--provider macos-keychain --env EXAMPLE_API_KEY` | ✅ Supported |
-| Linux Secret Service | `linux-secret-service` | `--provider linux-secret-service --env EXAMPLE_API_KEY` | ✅ Supported |
-| Windows Credential Manager | `windows-credential-manager` | `--provider windows-credential-manager --env EXAMPLE_API_KEY` | ✅ Supported |
-| Bitwarden | `bitwarden` | `--provider bitwarden --env EXAMPLE_API_KEY` | ✅ Supported |
-| Bitwarden Secrets Manager | `bws` | `--provider bws --env EXAMPLE_API_KEY` | ✅ Supported |
-| 1Password | `1password` | `--provider 1password --env EXAMPLE_API_KEY` | ✅ Supported |
-| Infisical | `infisical` | `--provider infisical --env EXAMPLE_API_KEY` | ✅ Supported |
+| macOS Keychain | `macos-keychain` | Service | Account |
+| Linux Secret Service | `linux-secret-service` | Service | Account |
+| Windows Credential Manager | `windows-credential-manager` | Target | Not used |
+| Bitwarden | `bitwarden` | Vault item | `password`, `username`, `totp`, `uri`, or a custom field |
+| Bitwarden Secrets Manager | `bws` | Secret ID | `value` only |
+| 1Password | `1password` | Item | Item field; add `--scope vault=VAULT` |
+| Infisical | `infisical` | Secret key | `value` only; add scope when required |
 
-For example, each provider starts the target in the same way:
-
-```sh
-agent-secret-wrapper run --provider bws --env EXAMPLE_API_KEY -- /absolute/path/to/example-mcp
-```
+See [provider recipes](docs/provider-recipes.md) for a copy-ready command for every provider.
 
 ## Development
 

@@ -1,33 +1,32 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { configurationPath, loadConfiguration } from "../src/config.mjs";
 import { parseArguments } from "../src/cli.mjs";
-import { buildChildEnvironment, defaultBinding, loadSecret, ProviderError, resolveBinding } from "../src/providers.mjs";
+import { buildChildEnvironment, loadSecret, ProviderError } from "../src/providers.mjs";
 
 
-test("macOS Keychain adapter requests the configured service and account", () => {
+test("macOS Keychain binding selects an item and field", () => {
   const calls = [];
-  const secret = loadSecret("macos-keychain", { service: "service", account: "account" }, (command, arguments_) => {
+  const secret = loadSecret("macos-keychain", { item: "example-mcp", field: "api-key" }, (command, arguments_) => {
     calls.push([command, arguments_]);
     return "token\n";
   });
   assert.equal(secret, "token");
-  assert.deepEqual(calls, [["security", ["find-generic-password", "-s", "service", "-a", "account", "-w"]]]);
+  assert.deepEqual(calls, [["security", ["find-generic-password", "-s", "example-mcp", "-a", "api-key", "-w"]]]);
 });
 
 
-test("Linux Secret Service adapter requests service and account", () => {
-  const secret = loadSecret("linux-secret-service", { service: "service", account: "account" }, (command, arguments_) => {
+test("Linux Secret Service binding selects an item and field", () => {
+  const secret = loadSecret("linux-secret-service", { item: "example-mcp", field: "api-key" }, (command, arguments_) => {
     assert.equal(command, "secret-tool");
-    assert.deepEqual(arguments_, ["lookup", "service", "service", "account", "account"]);
+    assert.deepEqual(arguments_, ["lookup", "service", "example-mcp", "account", "api-key"]);
     return "token\n";
   });
   assert.equal(secret, "token");
 });
 
 
-test("Windows Credential Manager target is escaped", () => {
-  loadSecret("windows-credential-manager", { target: "a'b" }, (command, arguments_) => {
+test("Windows Credential Manager binding selects one item", () => {
+  loadSecret("windows-credential-manager", { item: "a'b" }, (command, arguments_) => {
     assert.equal(command, "powershell");
     assert.match(arguments_.at(-1), /a''b/);
     return "token\r\n";
@@ -35,18 +34,28 @@ test("Windows Credential Manager target is escaped", () => {
 });
 
 
-test("Bitwarden Password Manager adapter reads one item", () => {
-  const secret = loadSecret("bitwarden", { item: "item-id" }, (command, arguments_) => {
+test("Bitwarden binding selects a built-in field", () => {
+  const secret = loadSecret("bitwarden", { item: "portainer", field: "password" }, (command, arguments_) => {
     assert.equal(command, "bw");
-    assert.deepEqual(arguments_, ["get", "password", "item-id"]);
+    assert.deepEqual(arguments_, ["get", "password", "portainer"]);
     return "token\n";
   });
   assert.equal(secret, "token");
 });
 
 
-test("Bitwarden Secrets Manager adapter reads the value field", () => {
-  const secret = loadSecret("bws", { secretId: "secret-id" }, (command, arguments_) => {
+test("Bitwarden binding selects a custom field", () => {
+  const secret = loadSecret("bitwarden", { item: "portainer", field: "api-key" }, (command, arguments_) => {
+    assert.equal(command, "bw");
+    assert.deepEqual(arguments_, ["get", "item", "portainer"]);
+    return JSON.stringify({ fields: [{ name: "api-key", value: "token" }] });
+  });
+  assert.equal(secret, "token");
+});
+
+
+test("BWS binding reads exactly one secret item", () => {
+  const secret = loadSecret("bws", { item: "secret-id", field: "value" }, (command, arguments_) => {
     assert.equal(command, "bws");
     assert.deepEqual(arguments_, ["secret", "get", "secret-id", "--output", "json"]);
     return '{"value":"token"}';
@@ -55,22 +64,24 @@ test("Bitwarden Secrets Manager adapter reads the value field", () => {
 });
 
 
-test("1Password adapter reads a secret reference", () => {
-  const secret = loadSecret("1password", { reference: "op://vault/item/field" }, (command, arguments_) => {
+test("1Password binding combines vault, item, and field", () => {
+  const secret = loadSecret("1password", {
+    item: "portainer",
+    field: "api-key",
+    scope: { vault: "Development" },
+  }, (command, arguments_) => {
     assert.equal(command, "op");
-    assert.deepEqual(arguments_, ["read", "op://vault/item/field"]);
+    assert.deepEqual(arguments_, ["read", "op://Development/portainer/api-key"]);
     return "token\n";
   });
   assert.equal(secret, "token");
 });
 
 
-test("Infisical adapter requests one named secret", () => {
+test("Infisical binding combines an item with scope", () => {
   const secret = loadSecret("infisical", {
-    secretKey: "API_TOKEN",
-    projectId: "project",
-    environment: "prod",
-    path: "/mcp",
+    item: "API_TOKEN",
+    scope: { project: "project", environment: "prod", path: "/mcp" },
   }, (command, arguments_) => {
     assert.equal(command, "infisical");
     assert.deepEqual(arguments_, [
@@ -96,43 +107,24 @@ test("provider authentication is not inherited by the target process", () => {
 });
 
 
-test("the CLI accepts one common run contract", () => {
-  assert.throws(() => parseArguments(["run", "--provider", "bws"]), ProviderError);
-  assert.throws(() => parseArguments([
-    "run", "--provider", "bws", "--env", "lowercase", "--", "tool",
-  ]), /uppercase/);
-  assert.throws(() => parseArguments([
-    "run", "--provider", "bws", "--env", "API_TOKEN", "--secret-id", "id", "--", "tool",
-  ]), /does not accept/);
+test("run has one provider-neutral contract", () => {
   assert.deepEqual(parseArguments([
-    "run", "--provider", "bws", "--env", "API_TOKEN", "--", "tool", "arg",
+    "run", "--provider", "bws", "--item", "secret-id", "--field", "value",
+    "--env", "API_TOKEN", "--", "tool", "arg",
   ]), {
-    options: { provider: "bws", env: "API_TOKEN" },
+    action: "run",
+    options: { provider: "bws", item: "secret-id", field: "value", env: "API_TOKEN" },
     command: ["tool", "arg"],
   });
-});
-
-
-test("providers use a common logical secret name", () => {
-  assert.deepEqual(defaultBinding("macos-keychain", "API_TOKEN"), {
-    service: "agent-secret-wrapper", account: "API_TOKEN",
-  });
-  assert.deepEqual(defaultBinding("bitwarden", "API_TOKEN"), { item: "API_TOKEN" });
-  assert.deepEqual(resolveBinding("bws", "API_TOKEN", {
-    bws: { API_TOKEN: { secretId: "secret-id" } },
-  }), { secretId: "secret-id" });
-  assert.throws(() => resolveBinding("bws", "API_TOKEN", {}), /configure bws/);
-});
-
-
-test("configuration stores bindings without secret values", () => {
-  const path = configurationPath({ XDG_CONFIG_HOME: "/config" }, "linux", "/home/test");
-  assert.equal(path, "/config/agent-secret-wrapper/providers.json");
-  const configuration = loadConfiguration({
-    environment: { AGENT_SECRET_WRAPPER_CONFIG: "/tmp/providers.json" },
-    readFile: () => JSON.stringify({
-      providers: { bws: { API_TOKEN: { secretId: "secret-id" } } },
-    }),
-  });
-  assert.deepEqual(configuration.providers.bws.API_TOKEN, { secretId: "secret-id" });
+  assert.throws(() => parseArguments([
+    "run", "--provider", "bws", "--env", "API_TOKEN", "--", "tool",
+  ]), /--provider, --item, and --env/);
+  assert.deepEqual(parseArguments([
+    "run", "--provider", "infisical", "--item", "API_TOKEN", "--scope", "project=project",
+    "--scope", "environment=prod", "--env", "API_TOKEN", "--", "tool",
+  ]).options.scope, ["project=project", "environment=prod"]);
+  assert.throws(() => loadSecret("bws", { item: "secret-id", field: "password" }), ProviderError);
+  assert.throws(() => loadSecret("1password", {
+    item: "portainer", scope: { project: "unexpected" },
+  }), /does not support scope/);
 });
