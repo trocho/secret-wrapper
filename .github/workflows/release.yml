@@ -1,0 +1,24 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+      - run: npm test
+      - run: npm run validate
+      - run: npm pack
+      - run: zip -r secret-process-wrapper-plugin.zip plugins/secret-process-wrapper
+      - run: gh release create "$GITHUB_REF_NAME" *.tgz secret-process-wrapper-plugin.zip --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}

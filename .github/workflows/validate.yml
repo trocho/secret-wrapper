@@ -1,0 +1,20 @@
+name: Validate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+      - run: npm test
+      - run: npm run validate
+      - run: npm run pack:check
+      - run: npx --yes skills add . --list
+      - run: zip -r secret-process-wrapper-plugin.zip plugins/secret-process-wrapper

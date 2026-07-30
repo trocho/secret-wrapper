@@ -1,0 +1,20 @@
+{
+  "name": "patryk-agent-tools",
+  "interface": {
+    "displayName": "Patryk Agent Tools"
+  },
+  "plugins": [
+    {
+      "name": "secret-process-wrapper",
+      "source": {
+        "source": "local",
+        "path": "./plugins/secret-process-wrapper"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}

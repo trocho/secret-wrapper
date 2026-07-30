@@ -1,0 +1,24 @@
+{
+  "name": "patryk-agent-tools",
+  "owner": {
+    "name": "Patryk Trochowski",
+    "email": "patryk.trocho@gmail.com",
+    "url": "https://github.com/trocho"
+  },
+  "metadata": {
+    "description": "Headless local secret adapters for coding agents and MCP servers."
+  },
+  "plugins": [
+    {
+      "name": "secret-process-wrapper",
+      "source": "./plugins/secret-process-wrapper",
+      "description": "Launch a coding tool with one secret from a local provider.",
+      "version": "0.2.0-next.0",
+      "author": {
+        "name": "Patryk Trochowski"
+      },
+      "license": "MIT",
+      "category": "development"
+    }
+  ]
+}
