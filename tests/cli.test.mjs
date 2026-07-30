@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { parseArguments, parseBindings, resolveBindingSecret, run } from "../src/cli.mjs";
+import { createRunner, parseArguments, parseBindings, resolveBindingSecret } from "../src/cli.mjs";
 import { buildChildEnvironment, loadSecret, ProviderError } from "../src/providers.mjs";
 import { decodeSecret, evaluateSelector, parseSelector } from "../src/selector.mjs";
 
@@ -280,11 +280,7 @@ test("run injects every transformed value and never launches after a resolution 
   const previousError = console.error;
   console.error = (message) => output.push(message);
   try {
-    const success = await run([
-      "run", "--provider", "bws",
-      "--bind", "API_TOKEN=secret[base64][json].token",
-      "--bind", "PASSWORD=password[base64]", "--debug", "--", "target",
-    ], {
+    const success = await createRunner({
       parentEnvironment: { BWS_ACCESS_TOKEN: "provider-auth", PATH: "/bin" },
       load: (_provider, binding) => binding.name === "API_TOKEN"
         ? { value: encoded, operations: [{ type: "transform", name: "base64" }, { type: "transform", name: "json" }, { type: "property", name: "token" }] }
@@ -293,29 +289,33 @@ test("run injects every transformed value and never launches after a resolution 
         launched.push(environment);
         return 0;
       },
-    });
+    })([
+      "run", "--provider", "bws",
+      "--bind", "API_TOKEN=secret[base64][json].token",
+      "--bind", "PASSWORD=password[base64]", "--debug", "--", "target",
+    ]);
     assert.equal(success, 0);
     assert.deepEqual(launched, [{ PATH: "/bin", API_TOKEN: "api-token", PASSWORD: "hunter2" }]);
     assert.equal(output.join("\n").includes("api-token"), false);
     assert.equal(output.join("\n").includes("hunter2"), false);
 
-    const failed = await run([
-      "run", "--provider", "bws", "--bind", "API_TOKEN=secret[base64]", "--", "target",
-    ], {
+    const failed = await createRunner({
       load: () => ({ value: "not-base64", operations: [{ type: "transform", name: "base64" }] }),
       launchProcess: async () => {
         throw new Error("target must not start");
       },
-    });
+    })([
+      "run", "--provider", "bws", "--bind", "API_TOKEN=secret[base64]", "--", "target",
+    ]);
     assert.equal(failed, 78);
 
-    const rejected = await run([
-      "run", "--provider", "bws", "--bind", "NODE_OPTIONS=secret", "--", "target",
-    ], {
+    const rejected = await createRunner({
       launchProcess: async () => {
         throw new Error("target must not start");
       },
-    });
+    })([
+      "run", "--provider", "bws", "--bind", "NODE_OPTIONS=secret", "--", "target",
+    ]);
     assert.equal(rejected, 78);
   } finally {
     console.error = previousError;

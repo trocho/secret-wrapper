@@ -164,7 +164,7 @@ export function launch(command, environment, debug = false) {
 }
 
 
-export async function run(arguments_, dependencies = {}) {
+async function runWithDependencies(arguments_, dependencies) {
   const {
     load = loadSecret,
     buildEnvironment = buildChildEnvironment,
@@ -206,4 +206,14 @@ export async function run(arguments_, dependencies = {}) {
     console.error(`secret-wrapper: ${message}`);
     return 78;
   }
+}
+
+
+export function createRunner(dependencies) {
+  return (arguments_) => runWithDependencies(arguments_, dependencies);
+}
+
+
+export function run(arguments_) {
+  return runWithDependencies(arguments_, {});
 }

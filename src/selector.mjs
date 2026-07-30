@@ -1,4 +1,4 @@
-import { ProviderError } from "./providers.mjs";
+import { ProviderError } from "./provider-error.mjs";
 
 
 const transforms = new Set(["base64", "json"]);
