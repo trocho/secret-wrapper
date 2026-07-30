@@ -1,0 +1,13 @@
+{
+  "name": "secret-process-wrapper",
+  "version": "0.1.0",
+  "description": "Inject one provider secret only into a child process.",
+  "author": {
+    "name": "Patryk Trochowski",
+    "email": "patryk.trocho@gmail.com",
+    "url": "https://github.com/trocho"
+  },
+  "homepage": "https://github.com/trocho/agent-secret-wrapper",
+  "repository": "https://github.com/trocho/agent-secret-wrapper",
+  "license": "MIT"
+}

@@ -1,0 +1,24 @@
+{
+  "name": "secret-process-wrapper",
+  "version": "0.1.0",
+  "description": "Inject one provider secret only into a child process.",
+  "author": {
+    "name": "Patryk Trochowski",
+    "email": "patryk.trocho@gmail.com",
+    "url": "https://github.com/trocho"
+  },
+  "homepage": "https://github.com/trocho/agent-secret-wrapper",
+  "repository": "https://github.com/trocho/agent-secret-wrapper",
+  "license": "MIT",
+  "keywords": ["secrets", "keychain", "bitwarden", "mcp"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Secret Process Wrapper",
+    "shortDescription": "Launch a process with a scoped secret.",
+    "longDescription": "Fetch one secret at startup and expose it only to the launched process.",
+    "developerName": "Patryk Trochowski",
+    "category": "Developer Tools",
+    "capabilities": [],
+    "defaultPrompt": "Create a Keychain-backed wrapper for my MCP server."
+  }
+}
