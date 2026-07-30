@@ -8,6 +8,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const plugin = resolve(root, "plugins/secret-process-wrapper");
 const rootSkill = resolve(root, "skills/secret-process-wrapper");
 const pluginSkill = resolve(plugin, "skills/secret-process-wrapper");
+const codexMarketplacePath = resolve(root, ".agents/plugins/marketplace.json");
 
 
 function require_(condition, message) {
@@ -19,6 +20,7 @@ function require_(condition, message) {
 
 for (const path of [
   resolve(root, ".claude-plugin/marketplace.json"),
+  codexMarketplacePath,
   resolve(plugin, ".claude-plugin/plugin.json"),
   resolve(plugin, ".codex-plugin/plugin.json"),
   resolve(rootSkill, "SKILL.md"),
@@ -35,6 +37,9 @@ execFileSync(process.execPath, [resolve(root, "tests/scripts/sync-plugin-skill.m
 
 const marketplace = JSON.parse(readFileSync(resolve(root, ".claude-plugin/marketplace.json")));
 require_(marketplace.plugins[0].source === "./plugins/secret-process-wrapper", "invalid Claude source");
+const codexMarketplace = JSON.parse(readFileSync(codexMarketplacePath));
+require_(codexMarketplace.name === marketplace.name, "marketplace names must match");
+require_(codexMarketplace.plugins[0].name === marketplace.plugins[0].name, "marketplace plugins must match");
 
 const packageJson = JSON.parse(readFileSync(resolve(root, "package.json")));
 require_(packageJson.name === "@trocho/agent-secret-wrapper", "invalid npm package name");

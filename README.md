@@ -78,10 +78,10 @@ agent-secret-wrapper run \
 Install for Codex and Claude Code with [skills.sh](https://skills.sh/):
 
 ```sh
-npx skills add git@github.com:trocho/agent-secret-wrapper.git --skill secret-process-wrapper --agent codex claude-code --global
+npx skills add https://github.com/trocho/agent-secret-wrapper.git --skill secret-process-wrapper --agent codex claude-code --global
 ```
 
-The repository is private for now, so the installer needs SSH access to `trocho/agent-secret-wrapper`.
+The repository is public, so the installer can download the skill directly from GitHub.
 
 The skill tells Codex and Claude Code to use this consistent, secret-safe command pattern instead of inventing provider-specific launch scripts or placing secrets in configuration.
 
@@ -89,7 +89,7 @@ The skill tells Codex and Claude Code to use this consistent, secret-safe comman
 
 ```text
 /plugin marketplace add git@github.com:trocho/agent-secret-wrapper.git
-/plugin install secret-process-wrapper@patryk-agent-tools
+/plugin install secret-process-wrapper@agent-secret-wrapper
 ```
 
 ## Selectors and providers

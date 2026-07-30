@@ -1,7 +1,7 @@
 {
-  "name": "patryk-agent-tools",
+  "name": "agent-secret-wrapper",
   "interface": {
-    "displayName": "Patryk Agent Tools"
+    "displayName": "Agent Secret Wrapper"
   },
   "plugins": [
     {

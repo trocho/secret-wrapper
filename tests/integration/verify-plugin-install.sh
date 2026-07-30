@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-readonly marketplace="patryk-agent-tools"
+readonly marketplace="agent-secret-wrapper"
 readonly plugin="secret-process-wrapper"
 readonly workspace="/workspace"
 
@@ -30,7 +30,7 @@ grep -Fq "${plugin}" "$HOME/codex-plugins.json" || fail "Codex did not list the 
 require_installed_skill "$HOME/.codex"
 
 printf '%s\n' "Verifying Claude Code plugin installation"
-claude plugin marketplace add "$workspace"
+claude plugin marketplace add "$workspace/.claude-plugin/marketplace.json"
 claude plugin install "${plugin}@${marketplace}" --scope user
 claude plugin list > "$HOME/claude-plugins.txt"
 grep -Fq "${plugin}" "$HOME/claude-plugins.txt" || fail "Claude Code did not list the installed plugin"
