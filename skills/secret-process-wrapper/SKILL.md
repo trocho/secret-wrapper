@@ -27,6 +27,10 @@ agent-secret-wrapper run \
 
 Supported providers are `macos-keychain`, `linux-secret-service`, `windows-credential-manager`, `bitwarden`, `bws`, `1password`, and `infisical`. Keep `run` provider-neutral; do not pass a secret value or a provider-specific flag.
 
+## Provider recipes
+
+When configuring a specific provider, read [references/provider-recipes.md](references/provider-recipes.md) and use its matching copy-ready command. Do not load it for a provider-neutral launcher change.
+
 ## Verify
 
 Run a non-destructive startup check. Do not print the secret or use a target command that exposes its environment. Missing provider data must fail with exit code 78; do not reset provider credentials or persist the secret outside its provider.

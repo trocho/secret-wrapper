@@ -22,7 +22,7 @@ for (const path of [
   resolve(plugin, ".codex-plugin/plugin.json"),
   resolve(rootSkill, "SKILL.md"),
   resolve(root, "package.json"),
-  resolve(root, "docs/provider-recipes.md"),
+  resolve(root, "skills/secret-process-wrapper/references/provider-recipes.md"),
 ]) {
   require_(statSync(path).isFile(), `missing ${path}`);
 }
@@ -38,5 +38,11 @@ const packageJson = JSON.parse(readFileSync(resolve(root, "package.json")));
 require_(packageJson.name === "@trocho/agent-secret-wrapper", "invalid npm package name");
 require_(packageJson.private === true, "candidate must not publish to npm");
 require_(packageJson.bin["agent-secret-wrapper"] === "./bin/agent-secret-wrapper.mjs", "invalid CLI entrypoint");
+
+const claudePlugin = JSON.parse(readFileSync(resolve(plugin, ".claude-plugin/plugin.json")));
+const codexPlugin = JSON.parse(readFileSync(resolve(plugin, ".codex-plugin/plugin.json")));
+require_(claudePlugin.version === packageJson.version, "Claude plugin version must match package version");
+require_(codexPlugin.version === packageJson.version, "Codex plugin version must match package version");
+require_(marketplace.plugins[0].version === packageJson.version, "marketplace version must match package version");
 
 console.log("distribution is valid");

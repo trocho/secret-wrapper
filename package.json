@@ -1,6 +1,6 @@
 {
   "name": "@trocho/agent-secret-wrapper",
-  "version": "0.5.0-next.0",
+  "version": "0.5.0-next.1",
   "description": "Headless local secret adapters for launching coding tools and MCP servers.",
   "private": true,
   "type": "module",

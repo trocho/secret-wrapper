@@ -127,7 +127,7 @@ For a locator with literal dots, use single quotes so the shell passes the selec
 
 The same escaping applies to a Bitwarden login property: `--selector 'portainer.login\.username'`.
 
-See [provider recipes](docs/provider-recipes.md) for a copy-ready command for every provider.
+See the skill's [provider recipes](skills/secret-process-wrapper/references/provider-recipes.md) for a copy-ready command for every provider.
 
 ## Debugging
 
