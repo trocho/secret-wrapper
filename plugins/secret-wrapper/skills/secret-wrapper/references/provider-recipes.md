@@ -6,7 +6,7 @@ To trace a recipe, add `--debug` before `--`. It logs the selected location and 
 
 ## macOS Keychain
 
-The selector is `SERVICE.ACCOUNT`. For a JSON value, append its property path.
+The selector is `SERVICE.ACCOUNT`. To read JSON, add `[json]` to `ACCOUNT` before its property path.
 
 ```sh
 secret-wrapper run \
@@ -17,7 +17,7 @@ secret-wrapper run \
 
 ## Linux Secret Service
 
-The selector is `SERVICE.ACCOUNT`. For a JSON value, append its property path.
+The selector is `SERVICE.ACCOUNT`. To read JSON, add `[json]` to `ACCOUNT` before its property path.
 
 ```sh
 secret-wrapper run \
@@ -28,7 +28,7 @@ secret-wrapper run \
 
 ## Windows Credential Manager
 
-The selector is the Credential Manager target. Append a JSON path only when its password value is JSON.
+The selector is the Credential Manager target. Add `[json]` before a JSON property path.
 
 ```powershell
 secret-wrapper run `
@@ -39,7 +39,7 @@ secret-wrapper run `
 
 ## Bitwarden
 
-The selector is `ITEM.FIELD`. `FIELD` can be `password`, `username`, `totp`, `uri`, a custom-field label, or an escaped login property such as `'portainer.login\.username'`. Append a JSON path after the field.
+The selector is `ITEM.FIELD`. `FIELD` can be `password`, `username`, `totp`, `uri`, a custom-field label, or an escaped login property such as `'portainer.login\.username'`. Add `[json]` to `FIELD` before a JSON property path.
 
 ```sh
 secret-wrapper run \
@@ -50,7 +50,7 @@ secret-wrapper run \
 
 ## Bitwarden Secrets Manager
 
-The selector is `SECRET_ID` or `SECRET_ID.value`. Append a JSON path after `value` when the secret value is JSON.
+The selector is `SECRET_ID` or `SECRET_ID.value`. Add `[json]` to the final value segment before a JSON property path.
 
 ```sh
 secret-wrapper run \
@@ -61,7 +61,7 @@ secret-wrapper run \
 
 ## 1Password
 
-`--scope vault=...` selects the vault. The selector is `ITEM.FIELD`; append a JSON path after the field.
+`--scope vault=...` selects the vault. The selector is `ITEM.FIELD`; add `[json]` to the field before a JSON property path.
 
 ```sh
 secret-wrapper run \
@@ -73,7 +73,7 @@ secret-wrapper run \
 
 ## Infisical
 
-The selector is `SECRET_KEY` or `SECRET_KEY.value`. Use scopes only when the current Infisical context is insufficient; append a JSON path after `value` when needed.
+The selector is `SECRET_KEY` or `SECRET_KEY.value`. Use scopes only when the current Infisical context is insufficient; add `[json]` to the final value segment before a JSON property path.
 
 ```sh
 secret-wrapper run \
@@ -87,32 +87,31 @@ secret-wrapper run \
 
 ## JSON and Base64 values
 
-For a secret field that contains JSON, add each property after a dot. This selects `token` from the JSON stored in Bitwarden's custom `config` field:
+Transforms are written next to the value they transform and run from left to right. `[base64][json]` decodes Base64 text and then parses the result as JSON. `[json][base64]` parses a JSON string and then decodes that string as Base64. JSON traversal is explicit: `[json]` must appear before the next property.
+
+For a secret field that contains JSON, add `[json]`, then each property after a dot. This selects `token` from the JSON stored in Bitwarden's custom `config` field:
 
 ```sh
 secret-wrapper run \
-  --provider bitwarden --bind PORTAINER_API_KEY=portainer.config.api.token \
+  --provider bitwarden --bind 'PORTAINER_API_KEY=portainer.config[json].api.token' \
   -- /absolute/path/to/portainer-mcp
 ```
 
-For a Base64-encoded final text value, add `--decode-value ENV_NAME=base64`. To decode a complete provider value before its JSON path is traversed, add `--decode-source ENV_NAME=base64`. Both stages can apply to the same bind; decoding is always explicit.
+For a Base64-encoded final text value, add `[base64]` to its segment:
 
 ```sh
 secret-wrapper run \
-  --provider bitwarden --bind PORTAINER_API_KEY=portainer.encoded-api-key \
-  --decode-value PORTAINER_API_KEY=base64 \
+  --provider bitwarden --bind 'PORTAINER_API_KEY=portainer.encoded-api-key[base64]' \
   -- /absolute/path/to/portainer-mcp
 ```
 
-For a source that is Base64-encoded JSON and a Base64-encoded nested password, use both stages:
+For a source that is Base64-encoded JSON and a nested value that is also Base64-encoded JSON, keep every step in one selector:
 
 ```sh
 secret-wrapper run \
   --provider bitwarden \
-  --bind PORTAINER_PASSWORD=portainer.config.credentials.password \
-  --decode-source PORTAINER_PASSWORD=base64 \
-  --decode-value PORTAINER_PASSWORD=base64 \
+  --bind 'PORTAINER_PASSWORD=portainer[base64][json].config.credentials.password[base64][json].key[base64]' \
   -- /absolute/path/to/portainer-mcp
 ```
 
-Escape a literal dot in a provider record, field, or JSON property with `\.` and quote the bind so the shell preserves it. For example, `--bind 'PORTAINER_API_KEY=com\.example\.portainer.api-key'` selects the `api-key` account from the macOS Keychain service `com.example.portainer`.
+Escape literal `.`, `\`, `[` and `]` in a provider record, field, or JSON property with `\.`, `\\`, `\[` and `\]`, then quote the bind so the shell preserves it. For example, `--bind 'PORTAINER_API_KEY=com\.example\.portainer.api-key'` selects the `api-key` account from the macOS Keychain service `com.example.portainer`.
