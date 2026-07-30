@@ -2,6 +2,8 @@
 
 Each recipe starts a target command with one secret. Replace the uppercase placeholders and the target path; never replace them with a secret value. Install and authenticate the selected provider's own CLI first; this wrapper selects and passes a secret but does not log in to the provider.
 
+To trace a recipe, add `--debug` before `--`. It logs the selected location and lifecycle stages but never the secret value or provider authentication.
+
 ## macOS Keychain
 
 `--item` is the Keychain service and `--field` is the account.

@@ -123,6 +123,9 @@ test("run has one provider-neutral contract", () => {
     "run", "--provider", "infisical", "--item", "API_TOKEN", "--scope", "project=project",
     "--scope", "environment=prod", "--env", "API_TOKEN", "--", "tool",
   ]).options.scope, ["project=project", "environment=prod"]);
+  assert.equal(parseArguments([
+    "run", "--provider", "bws", "--item", "secret-id", "--env", "API_TOKEN", "--debug", "--", "tool",
+  ]).options.debug, true);
   assert.throws(() => loadSecret("bws", { item: "secret-id", field: "password" }), ProviderError);
   assert.throws(() => loadSecret("1password", {
     item: "portainer", scope: { project: "unexpected" },

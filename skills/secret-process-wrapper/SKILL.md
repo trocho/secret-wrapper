@@ -29,3 +29,5 @@ Supported providers are `macos-keychain`, `linux-secret-service`, `windows-crede
 ## Verify
 
 Run a non-destructive startup check. Do not print the secret or use a target command that exposes its environment. Missing provider data must fail with exit code 78; do not reset provider credentials or persist the secret outside its provider.
+
+For diagnosis, add `--debug` before `--`. Share only its metadata and lifecycle output; it must not contain a secret value.

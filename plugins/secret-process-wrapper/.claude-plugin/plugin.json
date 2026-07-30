@@ -1,6 +1,6 @@
 {
   "name": "secret-process-wrapper",
-  "version": "0.4.0-next.0",
+  "version": "0.4.1-next.0",
   "description": "Launch a coding tool with one secret from a local provider.",
   "author": {
     "name": "Patryk Trochowski",

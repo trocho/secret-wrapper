@@ -83,6 +83,8 @@ npx skills add git@github.com:trocho/agent-secret-wrapper.git --skill secret-pro
 
 The repository is private for now, so the installer needs SSH access to `trocho/agent-secret-wrapper`.
 
+The skill tells Codex and Claude Code to use this consistent, secret-safe command pattern instead of inventing provider-specific launch scripts or placing secrets in configuration.
+
 ## Install the Claude Code plugin
 
 ```text
@@ -103,6 +105,19 @@ The repository is private for now, so the installer needs SSH access to `trocho/
 | Infisical | `infisical` | Secret key | `value` only; add scope when required |
 
 See [provider recipes](docs/provider-recipes.md) for a copy-ready command for every provider.
+
+## Debugging
+
+Add `--debug` before `--` to see the selected provider, item, field, scope, retrieval stage, and target-process exit code on standard error.
+
+```sh
+agent-secret-wrapper run \
+  --provider bitwarden --item portainer --field password \
+  --env PORTAINER_API_KEY --debug \
+  -- /absolute/path/to/portainer-mcp
+```
+
+Debug output never includes the secret value, provider authentication, command arguments, or provider response.
 
 ## Development
 
