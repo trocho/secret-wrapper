@@ -7,10 +7,10 @@ Run an MCP server, CLI, or local service with one secret fetched at startup and 
 Install for Codex and Claude Code with [skills.sh](https://skills.sh/):
 
 ```sh
-npx skills add trocho/agent-secret-wrapper --skill secret-process-wrapper --agent codex claude-code --global
+npx skills add git@github.com:trocho/agent-secret-wrapper.git --skill secret-process-wrapper --agent codex claude-code --global
 ```
 
-The repository is private for now, so the installer needs GitHub access to `trocho/agent-secret-wrapper`.
+The repository is private for now, so the installer needs SSH access to `trocho/agent-secret-wrapper`.
 
 ## Install the Claude Code plugin
 
