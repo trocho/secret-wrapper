@@ -1,13 +1,13 @@
 {
   "name": "secret-wrapper",
-  "version": "0.6.0-next.1",
+  "version": "0.6.0-next.2",
   "description": "Launch a tool with one or more values from a local secret provider.",
   "author": {
     "name": "Patryk Trochowski",
     "email": "patryk.trocho@gmail.com",
     "url": "https://github.com/trocho"
   },
-  "homepage": "https://github.com/trocho/agent-secret-wrapper",
-  "repository": "https://github.com/trocho/agent-secret-wrapper",
+  "homepage": "https://github.com/trocho/secret-wrapper",
+  "repository": "https://github.com/trocho/secret-wrapper",
   "license": "MIT"
 }

@@ -1,6 +1,6 @@
 {
   "name": "@trocho/secret-wrapper",
-  "version": "0.6.0-next.1",
+  "version": "0.6.0-next.2",
   "description": "Headless local secret adapters for launching tools and MCP servers.",
   "private": true,
   "type": "module",
@@ -27,12 +27,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/trocho/agent-secret-wrapper.git"
+    "url": "git+https://github.com/trocho/secret-wrapper.git"
   },
   "bugs": {
-    "url": "https://github.com/trocho/agent-secret-wrapper/issues"
+    "url": "https://github.com/trocho/secret-wrapper/issues"
   },
-  "homepage": "https://github.com/trocho/agent-secret-wrapper#readme",
+  "homepage": "https://github.com/trocho/secret-wrapper#readme",
   "keywords": [
     "secrets",
     "mcp",

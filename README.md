@@ -77,7 +77,7 @@ secret-wrapper run \
 Install for Codex and Claude Code with [skills.sh](https://skills.sh/):
 
 ```sh
-npx skills add https://github.com/trocho/agent-secret-wrapper.git --skill secret-wrapper --agent codex claude-code --global
+npx skills add https://github.com/trocho/secret-wrapper.git --skill secret-wrapper --agent codex claude-code --global
 ```
 
 The repository is public, so the installer can download the skill directly from GitHub.
@@ -87,7 +87,7 @@ The skill tells Codex and Claude Code to use this consistent, secret-safe comman
 ## Install the Claude Code plugin
 
 ```text
-/plugin marketplace add git@github.com:trocho/agent-secret-wrapper.git
+/plugin marketplace add https://github.com/trocho/secret-wrapper.git
 /plugin install secret-wrapper@secret-wrapper
 ```
 
