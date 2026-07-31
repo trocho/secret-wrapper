@@ -43,8 +43,3 @@ export function selectorOperations(selector, consumed) {
   }
   return operations;
 }
-
-
-export function selected(value, operations) {
-  return { value, operations };
-}

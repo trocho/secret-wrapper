@@ -5,7 +5,7 @@ description: Configure the headless Secret Wrapper CLI to launch an MCP server, 
 
 # Secret Wrapper
 
-Use `secret-wrapper run` as the common launcher. Every provider uses the same runtime contract: provider, one or more binds, optional scope, and command. When a supported local provider has no value yet, `run` opens a one-time local browser form, saves the submitted values, and then starts the command.
+Use `secret-wrapper run` as the common launcher. Every provider uses the same runtime contract: provider, one or more binds, optional scope, and command. When a supported local provider confirms a value is missing, `run` opens a one-time local browser form, saves the submitted values, and then starts the command.
 
 ## Standard
 
@@ -14,7 +14,7 @@ Use `secret-wrapper run` as the common launcher. Every provider uses the same ru
 - Use `--scope NAME=VALUE` only for provider context such as a 1Password vault or Infisical environment.
 - Do not bind `PATH`, `NODE_OPTIONS`, or dynamic-loader variables; the launcher rejects process-control names.
 - Launch the target through the CLI, not directly.
-- For a deliberate first setup or change, use `secret-wrapper authorize` with the same provider, binds, and scope. The form is in English, runs on `127.0.0.1`, shows no existing values, and blank inputs preserve existing values. It supports writing to macOS Keychain, Linux Secret Service, and Bitwarden; other adapters remain read-only.
+- For a deliberate first setup or change, use `secret-wrapper authorize` with the same provider, binds, and scope. The form is in English, runs on `127.0.0.1`, shows no existing values, and blank inputs preserve existing values. First-use `run` preserves a value created while the form was open; `authorize` intentionally replaces the selected value. It supports writing to macOS Keychain, Linux Secret Service, and Bitwarden; other adapters remain read-only.
 
 ## Create a wrapper
 
@@ -32,6 +32,6 @@ When configuring a specific provider, read [references/provider-recipes.md](refe
 
 ## Verify
 
-Run a non-destructive startup check. Do not print the secret or use a target command that exposes its environment. On supported providers, a missing value opens the local authorization form; otherwise it fails with exit code 78. Do not reset provider credentials or persist the secret outside its provider.
+Run a non-destructive startup check. Do not print the secret or use a target command that exposes its environment. On supported providers, a confirmed missing value opens the local authorization form; malformed values and provider failures fail with exit code 78 instead. The completion page reports whether each value was created, updated, preserved, or left unchanged. Do not reset provider credentials or persist the secret outside its provider.
 
 For diagnosis, add `--debug` before `--`. Share only its metadata and lifecycle output; it must not contain a secret value. See [references/provider-recipes.md](references/provider-recipes.md) for transform-order examples.

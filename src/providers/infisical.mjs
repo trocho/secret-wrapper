@@ -1,5 +1,6 @@
 import { ProviderError } from "../provider-error.mjs";
-import { rejectUnexpectedScope, scopeValue, selected, selectorOperations, selectorPart, trimNewline } from "./shared.mjs";
+import { SecretValue } from "../secret-value.mjs";
+import { rejectUnexpectedScope, scopeValue, selectorOperations, selectorPart, trimNewline } from "./shared.mjs";
 
 
 export const infisical = {
@@ -18,6 +19,6 @@ export const infisical = {
         arguments_.push(`${flag}=${scopeValue(binding, option)}`);
       }
     }
-    return selected(trimNewline(runCommand("infisical", arguments_)), operations);
+    return new SecretValue(trimNewline(runCommand("infisical", arguments_)), operations);
   },
 };

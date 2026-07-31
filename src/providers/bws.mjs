@@ -1,5 +1,6 @@
 import { ProviderError } from "../provider-error.mjs";
-import { rejectUnexpectedScope, selected, selectorOperations, selectorPart } from "./shared.mjs";
+import { SecretValue } from "../secret-value.mjs";
+import { rejectUnexpectedScope, selectorOperations, selectorPart } from "./shared.mjs";
 
 
 export const bws = {
@@ -21,6 +22,6 @@ export const bws = {
     if (typeof payload?.value !== "string") {
       throw new ProviderError("bws did not return a usable secret value");
     }
-    return selected(payload.value, operations);
+    return new SecretValue(payload.value, operations);
   },
 };

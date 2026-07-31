@@ -1,5 +1,4 @@
 import { ProviderError } from "./provider-error.mjs";
-import { decodeSecret, evaluateSelector } from "./selector.mjs";
 
 
 function isIndex(name) {
@@ -12,32 +11,6 @@ function containerFor(next) {
 }
 
 
-function decodeJson(value) {
-  if (typeof value !== "string") {
-    throw new ProviderError("[json] requires a text value");
-  }
-  try {
-    return JSON.parse(value);
-  } catch {
-    throw new ProviderError("selected secret value is not valid JSON");
-  }
-}
-
-
-function encode(value, name) {
-  if (name === "json") {
-    return JSON.stringify(value);
-  }
-  if (name === "base64") {
-    if (typeof value !== "string") {
-      throw new ProviderError("[base64] requires a text value");
-    }
-    return Buffer.from(value, "utf8").toString("base64");
-  }
-  throw new ProviderError(`unsupported selector transform: ${name}`);
-}
-
-
 export class SecretValue {
   constructor(source, operations = []) {
     this.source = source;
@@ -45,7 +18,23 @@ export class SecretValue {
   }
 
   read() {
-    return evaluateSelector(this.source, this.operations);
+    let selected = this.source;
+    for (const operation of this.operations) {
+      if (operation.type === "property") {
+        if (selected === null || typeof selected !== "object") {
+          throw new ProviderError(`JSON property ${operation.name} requires [json]`);
+        }
+        if (!Object.hasOwn(selected, operation.name)) {
+          throw new ProviderError(`JSON value does not contain ${operation.name}`);
+        }
+        selected = selected[operation.name];
+      } else if (operation.type === "transform") {
+        selected = this.#decode(selected, operation.name);
+      } else {
+        throw new ProviderError(`unsupported selector transform: ${operation.name}`);
+      }
+    }
+    return this.#scalar(selected);
   }
 
   with(value) {
@@ -59,10 +48,8 @@ export class SecretValue {
         if (absent) {
           selected = operation.name === "json" ? containerFor(this.operations[index + 1]) : undefined;
           absent = selected === undefined;
-        } else if (operation.name === "json") {
-          selected = decodeJson(selected);
         } else {
-          selected = decodeSecret(selected, operation.name);
+          selected = this.#decode(selected, operation.name);
         }
         continue;
       }
@@ -93,9 +80,57 @@ export class SecretValue {
         frame.parent[frame.name] = selected;
         selected = frame.parent;
       } else {
-        selected = encode(selected, frame.name);
+        selected = this.#encode(selected, frame.name);
       }
     }
     return new SecretValue(selected, this.operations);
+  }
+
+  #decode(value, name) {
+    if (typeof value !== "string") {
+      throw new ProviderError(`[${name}] requires a text value`);
+    }
+    if (name === "json") {
+      try {
+        return JSON.parse(value);
+      } catch {
+        throw new ProviderError("selected secret value is not valid JSON");
+      }
+    }
+    if (name === "base64") {
+      const normalized = value.replaceAll(/\s/g, "");
+      if (!normalized || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(normalized)) {
+        throw new ProviderError("selected secret value is not valid base64");
+      }
+      try {
+        return new TextDecoder("utf-8", { fatal: true }).decode(Buffer.from(normalized, "base64"));
+      } catch {
+        throw new ProviderError("base64 secret value is not valid UTF-8 text");
+      }
+    }
+    throw new ProviderError(`unsupported selector transform: ${name}`);
+  }
+
+  #encode(value, name) {
+    if (name === "json") {
+      return JSON.stringify(value);
+    }
+    if (name === "base64") {
+      if (typeof value !== "string") {
+        throw new ProviderError("[base64] requires a text value");
+      }
+      return Buffer.from(value, "utf8").toString("base64");
+    }
+    throw new ProviderError(`unsupported selector transform: ${name}`);
+  }
+
+  #scalar(value) {
+    if (typeof value === "string") {
+      return value;
+    }
+    if (typeof value === "number" || typeof value === "boolean") {
+      return String(value);
+    }
+    throw new ProviderError("selector must resolve to a string, number, or boolean");
   }
 }

@@ -6,7 +6,7 @@ Headless local secret adapters for launching MCP servers, coding tools, and scri
 
 MCP configuration, Compose files, and shell startup scripts often need an API token. This CLI keeps configuration free of the secret itself and retrieves it only when the target command starts.
 
-On first use, a missing value can be collected in a one-time browser form on `127.0.0.1`, stored with the selected provider, and then used to start the target command. The secret is never put in the MCP configuration, shell history, or debug output.
+On first use, a confirmed missing value can be collected in a one-time browser form on `127.0.0.1`, stored with the selected provider, and then used to start the target command. The secret is never put in the MCP configuration, shell history, or debug output.
 
 ## How it works
 
@@ -25,7 +25,7 @@ sequenceDiagram
     alt all values are available
         Provider-->>Adapter: values
         Adapter-->>Wrapper: resolved values
-    else one or more values are unavailable
+    else a provider confirms a value is missing
         Provider-->>Adapter: unavailable
         Adapter-->>Wrapper: authorization required
         Wrapper->>Browser: open one local form for all binds
@@ -71,7 +71,9 @@ Replace only the provider location and the target command. Never put the secret 
 
 ## First use and changing values
 
-`run` is the one-command path. If a value cannot be read and the selected provider supports browser authorization, Secret Wrapper opens one local browser tab for every bind, waits for the user to submit it, saves non-empty values, and retries before starting the target. The tab identifies the target process, provider, and selectors; it never displays any existing secret value.
+`run` is the one-command path. It opens one local browser tab only when a provider confirms that a value is missing. A malformed Base64/JSON value, provider login failure, locked store, or other read error stops the command without opening a form. The tab identifies the target process, provider, and selectors; it never displays an existing secret value.
+
+Before `run` writes a submitted value, it checks the provider again. If another process created the value while the form was open, the new value is preserved instead of overwritten. The completion page shows the result for every bind. If saving fails, the same page shows the safe provider diagnostic and allows another submission; submitted values are never echoed back.
 
 ```sh
 secret-wrapper run \
@@ -81,7 +83,7 @@ secret-wrapper run \
   -- /absolute/path/to/portainer-mcp
 ```
 
-To add or replace values deliberately, run `authorize` with the same provider, binds, and optional scope. It opens the same local form but does not start a target process.
+To add or replace values deliberately, run `authorize` with the same provider, binds, and optional scope. It opens the same local form but does not start a target process; unlike first-use `run`, it intentionally updates an existing selected value.
 
 ```sh
 secret-wrapper authorize \
@@ -201,7 +203,7 @@ secret-wrapper run \
   -- /absolute/path/to/portainer-mcp
 ```
 
-Debug output never includes the secret value, provider authentication, command arguments, or provider response.
+Debug output never includes the secret value, provider authentication, command arguments, or provider response. Browser authorization shows a safe provider diagnostic after a failed save; retrieval failures that occur before a form opens are reported on standard error instead.
 
 ## Development
 

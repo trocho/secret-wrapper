@@ -2,13 +2,15 @@
 
 Each recipe starts a target command with a bind. A bind is `ENV_NAME=SELECTOR`: the variable delivered to the target and its provider location. Repeat `--bind` for additional values. Replace the uppercase placeholders and the target path; never replace them with a secret value. Install and authenticate the selected provider's own CLI first; this wrapper selects and passes values but does not log in to the provider.
 
-If a bind is unavailable, `run` opens a local browser form only for macOS Keychain, Linux Secret Service, and Bitwarden. It collects every configured bind in one submission, keeps blank fields unchanged, saves the values, and retries the command. Use `secret-wrapper authorize` with the same provider and binds to change existing values without starting the target.
+If a provider confirms that a bind is missing, `run` opens a local browser form only for macOS Keychain, Linux Secret Service, and Bitwarden. It collects every configured bind in one submission, keeps blank fields unchanged, rechecks the provider before saving, and retries the command. A value created while the form was open is preserved. Use `secret-wrapper authorize` with the same provider and binds to deliberately change existing values without starting the target.
 
 To trace a recipe, add `--debug` before `--`. It logs the selected location and lifecycle stages but never the secret value or provider authentication.
 
 ## macOS Keychain
 
 The selector is `SERVICE.ACCOUNT`. To read JSON, add `[json]` to `ACCOUNT` before its property path.
+
+Browser authorization sends the submitted value to a native Keychain helper process through standard input; it is never passed as a `security -w VALUE` process argument. The helper uses the macOS Keychain API and may cause macOS to request access to an unlocked login keychain. It requires Apple Command Line Tools for the first write.
 
 ```sh
 secret-wrapper run \

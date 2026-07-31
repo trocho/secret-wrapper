@@ -1,5 +1,6 @@
 import { ProviderError } from "../provider-error.mjs";
-import { rejectUnexpectedScope, scopeValue, selected, selectorOperations, selectorPart, trimNewline } from "./shared.mjs";
+import { SecretValue } from "../secret-value.mjs";
+import { rejectUnexpectedScope, scopeValue, selectorOperations, selectorPart, trimNewline } from "./shared.mjs";
 
 
 export const onePassword = {
@@ -14,6 +15,6 @@ export const onePassword = {
     if (!vault) {
       throw new ProviderError("1password requires scope vault in its binding");
     }
-    return selected(trimNewline(runCommand("op", ["read", `op://${vault}/${item}/${field}`])), operations);
+    return new SecretValue(trimNewline(runCommand("op", ["read", `op://${vault}/${item}/${field}`])), operations);
   },
 };

@@ -1,9 +1,8 @@
 import { spawn } from "node:child_process";
 import { basename } from "node:path";
-import { buildChildEnvironment, loadSecret, ProviderError, providerNames } from "./providers.mjs";
+import { buildChildEnvironment, loadSecret, ProviderError, providerNames, SecretNotFoundError } from "./providers.mjs";
 import { parseSelector, selectorText } from "./selector.mjs";
 import { authorizeBindings } from "./setup.mjs";
-import { SecretValue } from "./secret-value.mjs";
 
 
 const usage = `Usage:
@@ -172,7 +171,7 @@ export function parseBindings(options) {
 
 
 export function resolveBindingSecret(selected) {
-  return new SecretValue(selected.value, selected.operations).read();
+  return selected.read();
 }
 
 
@@ -221,7 +220,7 @@ async function runWithDependencies(arguments_, dependencies) {
       writeDebug(true, `provider=${parsed.options.provider}; binds=${bindingSummary}; scope=${scopeNames}`);
     }
     if (parsed.action === "authorize") {
-      await authorize(parsed.options.provider, bindings, { processName: "A local process" });
+      await authorize(parsed.options.provider, bindings, { processName: "A local process", ifMissing: false });
       return 0;
     }
     writeDebug(parsed.options.debug, `retrieving ${bindings.length} secret value${bindings.length === 1 ? "" : "s"}`);
@@ -231,8 +230,11 @@ async function runWithDependencies(arguments_, dependencies) {
         values[binding.name] = resolveBindingSecret(load(parsed.options.provider, binding));
       }
     } catch (error) {
+      if (!(error instanceof SecretNotFoundError)) {
+        throw error;
+      }
       writeDebug(parsed.options.debug, "a value is unavailable; opening authorization page");
-      await authorize(parsed.options.provider, bindings, { processName: basename(parsed.command[0]) });
+      await authorize(parsed.options.provider, bindings, { processName: basename(parsed.command[0]), ifMissing: true });
       for (const binding of bindings) {
         values[binding.name] = resolveBindingSecret(load(parsed.options.provider, binding));
       }

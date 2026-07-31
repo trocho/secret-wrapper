@@ -69,6 +69,28 @@ function page(bindings, action, { provider, processName }) {
 }
 
 
+function resultPage(outcomes) {
+  const items = outcomes.map(({ name, status }) => `<li><strong>${escapeHtml(name)}</strong>: ${escapeHtml(status)}</li>`).join("\n");
+  return `<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Secret Wrapper authorization complete</title>
+<style>body{font:16px system-ui,sans-serif;max-width:42rem;margin:3rem auto;padding:0 1rem}li{margin:.5rem 0}</style>
+<h1>Authorization complete</h1>
+<p>Secret Wrapper checked each value again immediately before saving.</p>
+<ul>${items}</ul>
+<p>You can close this tab.</p>
+</html>`;
+}
+
+
+function errorPage(bindings, action, context, error) {
+  return page(bindings, action, context).replace(
+    "<form method=\"post\"",
+    `<p role="alert"><strong>Secret Wrapper could not save the submitted values.</strong> ${escapeHtml(error)}</p><p>Correct the values or resolve the provider error, then submit again. Values are not shown or retained in this page.</p><form method="post"`,
+  );
+}
+
+
 function formBody(request) {
   return new Promise((resolve, reject) => {
     let size = 0;
@@ -91,6 +113,7 @@ function formBody(request) {
 
 export function collectBrowserValues(bindings, context, {
   open = openBrowser,
+  onSubmit = undefined,
   timeoutMilliseconds = 10 * 60 * 1000,
 } = {}) {
   return new Promise((resolve, reject) => {
@@ -121,13 +144,14 @@ export function collectBrowserValues(bindings, context, {
           return;
         }
         const result = Object.fromEntries(bindings.map((binding, index) => [binding.name, values.get(`bind-${index}`) ?? ""]));
+        const outcomes = onSubmit ? await onSubmit(result) : undefined;
         response.writeHead(200, responseHeaders);
-        response.end("<p>Your values were received. Secret Wrapper is saving them now. You can close this tab.</p>");
-        finish(resolve, result);
+        response.end(outcomes ? resultPage(outcomes) : "<p>Your values were received. You can close this tab.</p>");
+        finish(resolve, outcomes ? { values: result, outcomes } : result);
       } catch (error) {
-        response.writeHead(400, { ...responseHeaders, "content-type": "text/plain; charset=utf-8" });
-        response.end("Invalid form submission.");
-        finish(reject, error);
+        const message = error instanceof Error ? error.message : "the provider failed";
+        response.writeHead(500, responseHeaders);
+        response.end(errorPage(bindings, action, context, message));
       }
     });
     server.once("error", reject);
@@ -150,14 +174,28 @@ export async function authorizeBindings(provider, bindings, {
   collectValues = collectBrowserValues,
   save = saveSecret,
   processName = "A local process",
+  ifMissing = false,
 } = {}) {
   if (!canSaveSecret(provider)) {
     throw new ProviderError(`${provider} does not support browser authorization yet`);
   }
-  const values = await collectValues(bindings, { provider: providerLabels[provider] ?? provider, processName });
-  for (const binding of bindings) {
-    if (values[binding.name]) {
-      save(provider, binding, values[binding.name]);
+  const persist = async (values) => {
+    const outcomes = [];
+    for (const binding of bindings) {
+      if (!values[binding.name]) {
+        outcomes.push({ name: binding.name, status: "not changed (blank input)" });
+        continue;
+      }
+      const result = await save(provider, binding, values[binding.name], { ifMissing });
+      outcomes.push({ name: binding.name, status: result.status === "preserved"
+        ? "preserved (a value was added while this form was open)"
+        : `${result.status} successfully` });
     }
+    return outcomes;
+  };
+  const collected = await collectValues(bindings, { provider: providerLabels[provider] ?? provider, processName }, { onSubmit: persist });
+  if (collected?.outcomes) {
+    return collected.outcomes;
   }
+  return persist(collected);
 }

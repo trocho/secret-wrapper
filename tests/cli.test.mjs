@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createRunner, parseArguments, parseBindings, resolveBindingSecret } from "../src/cli.mjs";
-import { buildChildEnvironment, loadSecret, ProviderError, saveSecret } from "../src/providers.mjs";
-import { decodeSecret, evaluateSelector, parseSelector } from "../src/selector.mjs";
+import { buildChildEnvironment, execute, loadSecret, ProviderError, saveSecret, SecretNotFoundError } from "../src/providers.mjs";
+import { parseSelector } from "../src/selector.mjs";
 import { SecretValue } from "../src/secret-value.mjs";
 import { authorizeBindings, collectBrowserValues } from "../src/setup.mjs";
 
@@ -38,19 +38,19 @@ test("selector operations are explicit, ordered, and scalar", () => {
     { type: "property", name: "key" },
     { type: "transform", name: "base64" },
   ];
-  assert.equal(evaluateSelector(password, operations), "portainer-password");
-  assert.equal(evaluateSelector('{"token":"cG9ydGFpbmVyLXRva2Vu"}', [
+  assert.equal(new SecretValue(password, operations).read(), "portainer-password");
+  assert.equal(new SecretValue('{"token":"cG9ydGFpbmVyLXRva2Vu"}', [
     { type: "transform", name: "json" },
     { type: "property", name: "token" },
     { type: "transform", name: "base64" },
-  ]), "portainer-token");
-  assert.equal(evaluateSelector('"cG9ydGFpbmVyLXRva2Vu"', [
+  ]).read(), "portainer-token");
+  assert.equal(new SecretValue('"cG9ydGFpbmVyLXRva2Vu"', [
     { type: "transform", name: "json" },
     { type: "transform", name: "base64" },
-  ]), "portainer-token");
-  assert.throws(() => evaluateSelector('{"api":"value"}', [{ type: "property", name: "api" }]), /requires \[json\]/);
-  assert.throws(() => evaluateSelector("not-json", [{ type: "transform", name: "json" }]), /not valid JSON/);
-  assert.throws(() => evaluateSelector('{"api":{}}', [{ type: "transform", name: "json" }, { type: "property", name: "api" }]), /must resolve/);
+  ]).read(), "portainer-token");
+  assert.throws(() => new SecretValue('{"api":"value"}', [{ type: "property", name: "api" }]).read(), /requires \[json\]/);
+  assert.throws(() => new SecretValue("not-json", [{ type: "transform", name: "json" }]).read(), /not valid JSON/);
+  assert.throws(() => new SecretValue('{"api":{}}', [{ type: "transform", name: "json" }, { type: "property", name: "api" }]).read(), /must resolve/);
 });
 
 
@@ -83,6 +83,16 @@ test("SecretValue reads and patches a JSON leaf without losing sibling values", 
 });
 
 
+test("SecretValue creates the requested JSON structure when a provider confirms no source exists", () => {
+  const source = new SecretValue(undefined, [
+    { type: "transform", name: "json" },
+    { type: "property", name: "api" },
+    { type: "property", name: "token" },
+  ]).with("new").source;
+  assert.equal(source, '{"api":{"token":"new"}}');
+});
+
+
 test("browser authorization collects every bind from a local English form", async () => {
   let resolveOpened;
   const opened = new Promise((resolve) => {
@@ -110,6 +120,76 @@ test("browser authorization collects every bind from a local English form", asyn
 });
 
 
+test("browser authorization saves before confirming and reports guarded updates", async () => {
+  let resolveOpened;
+  const opened = new Promise((resolve) => {
+    resolveOpened = resolve;
+  });
+  const bindings = [{ name: "API_TOKEN", selector: parseSelector("portainer.api-key") }];
+  const authorization = authorizeBindings("macos-keychain", bindings, {
+    collectValues: (requestedBindings, context, options) => collectBrowserValues(requestedBindings, context, {
+      ...options,
+      open: async (url) => resolveOpened(url),
+    }),
+    save: async (provider, binding, value, options) => {
+      assert.equal(provider, "macos-keychain");
+      assert.equal(binding.name, "API_TOKEN");
+      assert.equal(value, "new-token");
+      assert.equal(options.ifMissing, true);
+      return { status: "preserved" };
+    },
+    ifMissing: true,
+  });
+  const url = await opened;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: "bind-0=new-token",
+  });
+  assert.equal(response.status, 200);
+  assert.match(await response.text(), /Authorization complete/);
+  assert.equal((await authorization)[0].status, "preserved (a value was added while this form was open)");
+});
+
+
+test("browser authorization renders a provider error without exposing submitted values", async () => {
+  let resolveOpened;
+  const opened = new Promise((resolve) => {
+    resolveOpened = resolve;
+  });
+  const bindings = [{ name: "API_TOKEN", selector: parseSelector("portainer.api-key") }];
+  const authorization = authorizeBindings("macos-keychain", bindings, {
+    collectValues: (requestedBindings, context, options) => collectBrowserValues(requestedBindings, context, {
+      ...options,
+      open: async (url) => resolveOpened(url),
+    }),
+    save: () => {
+      throw new ProviderError("Keychain is locked");
+    },
+  });
+  const authorizationResult = authorization.then(
+    () => new Error("authorization unexpectedly completed"),
+    (error) => error,
+  );
+  const url = await opened;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: "bind-0=never-display-this",
+  });
+  const document = await response.text();
+  assert.equal(response.status, 500);
+  assert.match(document, /Keychain is locked/);
+  assert.doesNotMatch(document, /never-display-this/);
+  await fetch(url, {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: "cancel=1",
+  });
+  assert.match((await authorizationResult).message, /authorization was cancelled/);
+});
+
+
 test("browser authorization does not open a form for read-only providers", async () => {
   await assert.rejects(
     authorizeBindings("bws", [{ name: "API_TOKEN", selector: parseSelector("secret") }], {
@@ -122,6 +202,14 @@ test("browser authorization does not open a form for read-only providers", async
 });
 
 
+test("provider writes send secret input through stdin", () => {
+  const received = execute(process.execPath, ["-e", "process.stdin.on('data', (value) => process.stdout.write(value))"], {
+    input: "secret-through-stdin",
+  });
+  assert.equal(received, "secret-through-stdin");
+});
+
+
 test("macOS Keychain selector selects a service and account", () => {
   const calls = [];
   const selected = loadSecret("macos-keychain", {
@@ -130,8 +218,25 @@ test("macOS Keychain selector selects a service and account", () => {
     calls.push([command, arguments_]);
     return "dG9rZW4=\n";
   });
-  assert.deepEqual(selected, { value: "dG9rZW4=", operations: [{ type: "transform", name: "base64" }] });
+  assert.equal(selected.read(), "token");
   assert.deepEqual(calls, [["security", ["find-generic-password", "-s", "example-mcp", "-a", "api-key", "-w"]]]);
+});
+
+
+test("only a confirmed missing native record becomes SecretNotFoundError", () => {
+  const binding = { selector: parseSelector("example-mcp.api-key") };
+  assert.throws(() => loadSecret("macos-keychain", binding, () => {
+    const error = new ProviderError("security failed");
+    error.status = 44;
+    error.stderr = "The specified item could not be found in the keychain.";
+    throw error;
+  }), SecretNotFoundError);
+  assert.throws(() => loadSecret("macos-keychain", binding, () => {
+    const error = new ProviderError("Keychain is locked");
+    error.status = 36;
+    error.stderr = "User interaction is not allowed.";
+    throw error;
+  }), /Keychain is locked/);
 });
 
 
@@ -143,33 +248,46 @@ test("Linux Secret Service selector selects a service and account", () => {
     assert.deepEqual(arguments_, ["lookup", "service", "example-mcp", "account", "api-key"]);
     return "token\n";
   });
-  assert.deepEqual(selected, { value: "token", operations: [] });
+  assert.equal(selected.read(), "token");
 });
 
 
 test("native providers save a patched source value", () => {
   const binding = { selector: parseSelector("example-mcp.config[json].api.token") };
   const calls = [];
-  saveSecret("macos-keychain", binding, "new", (command, arguments_) => {
+  saveSecret("macos-keychain", binding, "new", { write: (service, account, input) => {
+    calls.push(["keychain-writer", [service, account], { input }]);
+  } }, (command, arguments_) => {
     calls.push([command, arguments_]);
     return command === "security" && arguments_[0] === "find-generic-password"
       ? '{"api":{"token":"old","region":"eu"}}\n'
       : "";
   });
-  assert.deepEqual(calls.at(-1), ["security", [
-    "add-generic-password", "-U", "-s", "example-mcp", "-a", "config", "-w", '{"api":{"token":"new","region":"eu"}}',
-  ]]);
+  assert.deepEqual(calls.at(-1), ["keychain-writer", ["example-mcp", "config"], { input: '{"api":{"token":"new","region":"eu"}}' }]);
 
   saveSecret("linux-secret-service", binding, "new", (command, arguments_, options) => {
     calls.push([command, arguments_, options]);
     if (command === "secret-tool" && arguments_[0] === "lookup") {
-      throw new ProviderError("missing");
+      throw new SecretNotFoundError("missing");
     }
     return "";
   });
   assert.deepEqual(calls.at(-1), ["secret-tool", [
     "store", "--label=example-mcp", "service", "example-mcp", "account", "config",
   ], { input: '{"api":{"token":"new"}}' }]);
+});
+
+
+test("guarded save preserves a native value created while authorization was open", () => {
+  let wrote = false;
+  const outcome = saveSecret("macos-keychain", { selector: parseSelector("example-mcp.api-key") }, "new", {
+    ifMissing: true,
+    write: () => {
+      wrote = true;
+    },
+  }, () => "concurrently-created\n");
+  assert.deepEqual(outcome, { status: "preserved" });
+  assert.equal(wrote, false);
 });
 
 
@@ -224,7 +342,7 @@ test("Bitwarden saves an existing item or creates a missing item through stdin",
   saveSecret("bitwarden", { selector: parseSelector("new-item.password") }, "new", (command, arguments_, options) => {
     createdCalls.push([command, arguments_, options]);
     if (arguments_[0] === "get") {
-      throw new ProviderError("missing");
+      throw new SecretNotFoundError("missing");
     }
     if (arguments_[0] === "list") {
       return "[]";
@@ -259,7 +377,7 @@ test("1Password selector combines vault, item, and field", () => {
     assert.deepEqual(arguments_, ["read", "op://Development/portainer/api-key"]);
     return "token\n";
   });
-  assert.deepEqual(selected, { value: "token", operations: [] });
+  assert.equal(selected.read(), "token");
 });
 
 
@@ -275,7 +393,7 @@ test("Infisical selector combines a key with scope", () => {
     ]);
     return "token\n";
   });
-  assert.deepEqual(selected, { value: "token", operations: [] });
+  assert.equal(selected.read(), "token");
 });
 
 
@@ -295,12 +413,13 @@ test("annotations on a required provider locator fail before retrieval", () => {
 });
 
 
-test("base64 decoding is explicit and rejects malformed or binary values", () => {
-  assert.equal(decodeSecret("cG9ydGFpbmVyLXRva2Vu", "base64"), "portainer-token");
-  assert.equal(decodeSecret("token", undefined), "token");
-  assert.throws(() => decodeSecret("not base64!", "base64"), /not valid base64/);
-  assert.throws(() => decodeSecret("/w==", "base64"), /not valid UTF-8/);
-  assert.throws(() => decodeSecret("dG9rZW4=", "rot13"), /unsupported decoding/);
+test("SecretValue decodes base64 explicitly and rejects malformed or binary values", () => {
+  const base64 = (value, name = "base64") => new SecretValue(value, [{ type: "transform", name }]).read();
+  assert.equal(base64("cG9ydGFpbmVyLXRva2Vu"), "portainer-token");
+  assert.equal(new SecretValue("token").read(), "token");
+  assert.throws(() => base64("not base64!"), /not valid base64/);
+  assert.throws(() => base64("/w=="), /not valid UTF-8/);
+  assert.throws(() => base64("dG9rZW4=", "rot13"), /unsupported selector transform/);
 });
 
 
@@ -417,8 +536,8 @@ test("run injects every transformed value and never launches after a resolution 
     const success = await createRunner({
       parentEnvironment: { BWS_ACCESS_TOKEN: "provider-auth", PATH: "/bin" },
       load: (_provider, binding) => binding.name === "API_TOKEN"
-        ? { value: encoded, operations: [{ type: "transform", name: "base64" }, { type: "transform", name: "json" }, { type: "property", name: "token" }] }
-        : { value: "aHVudGVyMg==", operations: [{ type: "transform", name: "base64" }] },
+        ? new SecretValue(encoded, [{ type: "transform", name: "base64" }, { type: "transform", name: "json" }, { type: "property", name: "token" }])
+        : new SecretValue("aHVudGVyMg==", [{ type: "transform", name: "base64" }]),
       launchProcess: async (_command, environment) => {
         launched.push(environment);
         return 0;
@@ -433,10 +552,12 @@ test("run injects every transformed value and never launches after a resolution 
     assert.equal(output.join("\n").includes("api-token"), false);
     assert.equal(output.join("\n").includes("hunter2"), false);
 
+    let authorizationAttempts = 0;
     const failed = await createRunner({
-      load: () => ({ value: "not-base64", operations: [{ type: "transform", name: "base64" }] }),
+      load: () => new SecretValue("not-base64", [{ type: "transform", name: "base64" }]),
       authorize: async () => {
-        throw new ProviderError("authorization was cancelled");
+        authorizationAttempts += 1;
+        throw new Error("authorization must not open for malformed base64");
       },
       launchProcess: async () => {
         throw new Error("target must not start");
@@ -445,6 +566,7 @@ test("run injects every transformed value and never launches after a resolution 
       "run", "--provider", "bws", "--bind", "API_TOKEN=secret[base64]", "--", "target",
     ]);
     assert.equal(failed, 78);
+    assert.equal(authorizationAttempts, 0);
 
     const rejected = await createRunner({
       launchProcess: async () => {
@@ -466,14 +588,15 @@ test("run authorizes every bind once, then retries before launching", async () =
   const result = await createRunner({
     load: (_provider, binding) => {
       if (!authorized) {
-        throw new ProviderError("missing");
+        throw new SecretNotFoundError("missing");
       }
-      return { value: `${binding.name.toLowerCase()}-value`, operations: [] };
+      return new SecretValue(`${binding.name.toLowerCase()}-value`);
     },
     authorize: async (provider, bindings, context) => {
       assert.equal(provider, "macos-keychain");
       assert.deepEqual(bindings.map((binding) => binding.name), ["API_TOKEN", "PASSWORD"]);
       assert.equal(context.processName, "target");
+      assert.equal(context.ifMissing, true);
       authorized = true;
     },
     launchProcess: async (_command, environment) => {
@@ -498,6 +621,7 @@ test("authorize opens the setup flow without launching a target", async () => {
       assert.equal(provider, "macos-keychain");
       assert.deepEqual(bindings.map((binding) => binding.name), ["API_TOKEN"]);
       assert.equal(context.processName, "A local process");
+      assert.equal(context.ifMissing, false);
     },
     launchProcess: async () => {
       launched = true;

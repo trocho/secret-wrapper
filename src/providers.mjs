@@ -6,8 +6,8 @@ import { linuxSecretService } from "./providers/linux-secret-service.mjs";
 import { macosKeychain } from "./providers/macos-keychain.mjs";
 import { onePassword } from "./providers/onepassword.mjs";
 import { windowsCredentialManager } from "./providers/windows-credential-manager.mjs";
-import { ProviderError } from "./provider-error.mjs";
-export { ProviderError } from "./provider-error.mjs";
+import { ProviderCommandError, ProviderError } from "./provider-error.mjs";
+export { ProviderError, SecretNotFoundError } from "./provider-error.mjs";
 
 
 const providers = {
@@ -33,14 +33,14 @@ function providerFor(name) {
 }
 
 
-export function execute(command, arguments_, options = {}) {
+export function execute(command, arguments_, { input } = {}) {
   const result = spawnSync(command, arguments_, {
     encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
-    ...options,
+    stdio: [input === undefined ? "ignore" : "pipe", "pipe", "pipe"],
+    ...(input === undefined ? {} : { input }),
   });
   if (result.error || result.status !== 0) {
-    throw new ProviderError(`${command} could not retrieve the requested secret`);
+    throw new ProviderCommandError(command, result);
   }
   return result.stdout;
 }
@@ -51,12 +51,15 @@ export function loadSecret(provider, binding, runCommand = execute) {
 }
 
 
-export function saveSecret(provider, binding, value, runCommand = execute) {
+export function saveSecret(provider, binding, value, optionsOrRunCommand = {}, maybeRunCommand = execute) {
   const adapter = providerFor(provider);
   if (!adapter.save) {
     throw new ProviderError(`${provider} does not support browser authorization yet`);
   }
-  adapter.save(binding, value, runCommand);
+  const [options, runCommand] = typeof optionsOrRunCommand === "function"
+    ? [{}, optionsOrRunCommand]
+    : [optionsOrRunCommand, maybeRunCommand];
+  return adapter.save(binding, value, { ...options, runCommand });
 }
 
 

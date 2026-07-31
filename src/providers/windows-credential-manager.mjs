@@ -1,4 +1,5 @@
-import { rejectUnexpectedScope, selected, selectorOperations, selectorPart, trimNewline } from "./shared.mjs";
+import { SecretValue } from "../secret-value.mjs";
+import { rejectUnexpectedScope, selectorOperations, selectorPart, trimNewline } from "./shared.mjs";
 
 
 export const windowsCredentialManager = {
@@ -13,7 +14,7 @@ export const windowsCredentialManager = {
       "if ($null -eq $c) { exit 3 }",
       "[System.Net.NetworkCredential]::new('', $c.Password).Password",
     ].join("; ");
-    return selected(trimNewline(runCommand("powershell", [
+    return new SecretValue(trimNewline(runCommand("powershell", [
       "-NoProfile", "-NonInteractive", "-Command", script,
     ])), operations);
   },
