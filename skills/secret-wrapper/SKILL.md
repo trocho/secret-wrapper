@@ -1,6 +1,6 @@
 ---
 name: secret-wrapper
-description: Configure the headless Secret Wrapper CLI to launch an MCP server, coding tool, script, or local service with one or more values from a native keychain or supported secret provider. Use when moving a secret out of config or .env, adding a local secret provider to a command, or standardizing secret-backed launchers.
+description: Configure the local-first Secret Wrapper CLI to launch an MCP server, coding tool, script, or local service with one or more values from a native keychain or supported secret provider. Use when moving a secret out of config or .env, adding a local secret provider to a command, or standardizing secret-backed launchers.
 ---
 
 # Secret Wrapper
@@ -14,6 +14,7 @@ Use `secret-wrapper run` as the common launcher. Every provider uses the same ru
 - Use `--scope NAME=VALUE` only for provider context such as a 1Password vault or Infisical environment.
 - Do not bind `PATH`, `NODE_OPTIONS`, or dynamic-loader variables; the launcher rejects process-control names.
 - Launch the target through the CLI, not directly.
+- In compacted task summaries and handoffs, do not repeat secret values, bind expressions, provider record locators, or scopes. At most state that the target is launched through Secret Wrapper and point to the local configuration file when one exists.
 - For a deliberate first setup or change, use `secret-wrapper authorize` with the same provider, binds, and scope. The form is in English, runs on `127.0.0.1`, shows no existing values, and blank inputs preserve existing values. First-use `run` preserves a value created while the form was open; `authorize` intentionally replaces the selected value. It supports writing to macOS Keychain, Linux Secret Service, and Bitwarden; other adapters remain read-only.
 
 ## Create a wrapper

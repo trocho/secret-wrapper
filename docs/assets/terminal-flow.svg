@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="390" viewBox="0 0 1200 390" role="img" aria-labelledby="title description">
+  <title id="title">Secret Wrapper launcher trace</title>
+  <desc id="description">A sanitized terminal trace: launch command, missing-value detection, opening a browser authorization page, and target process start without printing credentials.</desc>
+  <rect width="1200" height="390" fill="#0b1020"/>
+  <rect x="36" y="30" width="1128" height="330" rx="16" fill="#10182a" stroke="#334155"/>
+  <rect x="36" y="30" width="1128" height="54" rx="16" fill="#172033"/>
+  <path d="M36 68h1128v16H36z" fill="#172033"/>
+  <circle cx="68" cy="57" r="7" fill="#ff6b6b"/><circle cx="92" cy="57" r="7" fill="#ffd166"/><circle cx="116" cy="57" r="7" fill="#69db7c"/>
+  <text x="146" y="62" fill="#aab8d5" font-family="system-ui, sans-serif" font-size="15">Terminal — demo without real credentials</text>
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16">
+    <text x="68" y="124" fill="#8be9fd">$</text>
+    <text x="88" y="124" fill="#f8f8f2">secret-wrapper run --provider macos-keychain --bind DEMO_API_TOKEN=demo-mcp.api-token</text>
+    <text x="88" y="151" fill="#f8f8f2">--bind DEMO_PASSWORD=demo-mcp.password -- demo-mcp</text>
+    <text x="68" y="206" fill="#b6c2de">secret-wrapper: debug: provider=macos-keychain; binds=DEMO_API_TOKEN, DEMO_PASSWORD</text>
+    <text x="68" y="235" fill="#b6c2de">secret-wrapper: debug: a value is unavailable; opening authorization page</text>
+    <text x="68" y="289" fill="#79e6a3">✓ Authorization completed — values were never printed</text>
+    <text x="68" y="318" fill="#b6c2de">secret-wrapper: debug: secret values retrieved; starting target process</text>
+    <text x="68" y="342" fill="#8996b3">demo-mcp started</text>
+  </g>
+</svg>

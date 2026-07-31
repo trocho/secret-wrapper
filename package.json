@@ -1,7 +1,7 @@
 {
   "name": "@trocho/secret-wrapper",
   "version": "0.6.0-next.6",
-  "description": "Headless local secret adapters for launching tools and MCP servers.",
+  "description": "Local-first secret adapters for launching tools and MCP servers.",
   "private": true,
   "type": "module",
   "bin": {

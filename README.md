@@ -1,12 +1,12 @@
 # Secret Wrapper
 
-Headless local secret adapters for launching MCP servers, coding tools, and scripts.
+Local-first secret adapters for launching MCP servers, coding tools, and scripts.
 
 ## Problem it solves
 
 MCP configuration, Compose files, and shell startup scripts often need an API token. This CLI keeps configuration free of the secret itself and retrieves it only when the target command starts.
 
-On first use, a confirmed missing value can be collected in a one-time browser form on `127.0.0.1`, stored with the selected provider, and then used to start the target command. The secret is never put in the MCP configuration, shell history, or debug output.
+On first use, a confirmed missing value can be collected in a one-time browser form on `127.0.0.1`, stored with the selected provider, and then used to start the target command. Once values are provisioned, normal launches are non-interactive. The secret is never put in the MCP configuration, shell history, or debug output.
 
 ## How it works
 
@@ -40,6 +40,22 @@ sequenceDiagram
     end
     Wrapper->>Child: start with bound environment values
 ```
+
+## See the authorization flow
+
+The screenshots below are from the real local browser flow using demo names and placeholder values only. No credential is rendered, logged, or stored by the demo.
+
+![Sanitized terminal trace from a Secret Wrapper launch](docs/assets/terminal-flow.svg)
+
+| Missing value: one local form for all binds | Completed: a per-value update result |
+| --- | --- |
+| ![Secret Wrapper local authorization form](docs/assets/authorization-form.png) | ![Secret Wrapper authorization completion page](docs/assets/authorization-success.png) |
+
+| Provider failure: safe diagnostic and retry |
+| --- |
+| ![Secret Wrapper authorization error page](docs/assets/authorization-error.png) |
+
+The form appears only after a provider confirms a value is missing. It states which local process is waiting, never displays existing values, and gives a clear status after submission: created, updated, preserved because another process supplied a value first, or unchanged because the field was blank. If a write fails, the form keeps the user in the local page with a safe diagnostic and a retry path.
 
 ## Candidate build
 
@@ -123,7 +139,44 @@ secret-wrapper authorize \
   [--scope NAME=VALUE ...] [--debug]
 ```
 
-## Install the skill
+## Compatible tools and installation
+
+Secret Wrapper is device-neutral: the launcher is a normal local process, so it works with any MCP client that can start a stdio command. The integrations below merely teach an agent the standard command shape; they do not receive or retain the secret.
+
+The CLI is still a GitHub-release candidate, not an npm publication. Install the current candidate once on the machine that launches the MCP server:
+
+```sh
+git clone https://github.com/trocho/secret-wrapper.git
+cd secret-wrapper
+npm link
+secret-wrapper --help
+```
+
+After npm publication this becomes `npm install --global @trocho/secret-wrapper`.
+
+| Tool or surface | Best integration | Install once | Use afterward |
+| --- | --- | --- | --- |
+| Codex desktop or CLI | Native Codex plugin | `codex plugin marketplace add trocho/secret-wrapper`<br>`codex plugin add secret-wrapper@secret-wrapper` | Ask Codex to configure or run a secret-backed launcher. |
+| Claude Code | Native Claude Code plugin | `claude plugin marketplace add trocho/secret-wrapper`<br>`claude plugin install secret-wrapper@secret-wrapper` | Ask Claude Code to configure or run a secret-backed launcher. |
+| Codex and Claude Code | Portable skill via skills.sh | `npx skills add https://github.com/trocho/secret-wrapper.git --skill secret-wrapper --agent codex claude-code --global` | The same skill is available even when plugin installation is not preferred. |
+| Cursor, Cline, VS Code, Windsurf, or another MCP host | Native wrapper command | Install the CLI, then configure the host to start `secret-wrapper run … -- YOUR_MCP_COMMAND`. | The host sees only the target command; Secret Wrapper fetches values immediately before it starts. |
+| Shell scripts, Compose helpers, local services | Native wrapper command | Install the CLI and replace the direct process launch with `secret-wrapper run`. | Use the exact same `--provider`, `--bind`, and optional `--scope` contract as an MCP server. |
+
+### Codex plugin
+
+```sh
+codex plugin marketplace add trocho/secret-wrapper
+codex plugin add secret-wrapper@secret-wrapper
+```
+
+### Claude Code plugin
+
+```sh
+claude plugin marketplace add trocho/secret-wrapper
+claude plugin install secret-wrapper@secret-wrapper
+```
+
+### Portable skill
 
 Install for Codex and Claude Code with [skills.sh](https://skills.sh/):
 
@@ -133,14 +186,7 @@ npx skills add https://github.com/trocho/secret-wrapper.git --skill secret-wrapp
 
 The repository is public, so the installer can download the skill directly from GitHub.
 
-The skill tells Codex and Claude Code to use this consistent, secret-safe command pattern instead of inventing provider-specific launch scripts or placing secrets in configuration.
-
-## Install the Claude Code plugin
-
-```text
-/plugin marketplace add https://github.com/trocho/secret-wrapper.git
-/plugin install secret-wrapper@secret-wrapper
-```
+The skill tells Codex and Claude Code to use this consistent, secret-safe command pattern instead of inventing provider-specific launch scripts or placing secrets in configuration. It also instructs them not to repeat values, binds, record locators, or scopes in compacted handoffs.
 
 ## Selectors and providers
 

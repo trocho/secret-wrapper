@@ -59,12 +59,13 @@ function page(bindings, action, { provider, processName }) {
   return `<!doctype html>
 <html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Secret Wrapper authorization</title>
-<style>body{font:16px system-ui,sans-serif;max-width:42rem;margin:3rem auto;padding:0 1rem}label{display:block;margin:1.25rem 0}small{display:block;color:#555;margin:.2rem 0}input{box-sizing:border-box;width:100%;padding:.65rem}button{padding:.7rem 1rem;margin-right:.5rem}</style>
-<h1>Authorize Secret Wrapper</h1>
-<p><strong>${escapeHtml(processName)}</strong> needs the values below before it can start. Secret Wrapper will store submitted values in <strong>${escapeHtml(provider)}</strong> and pass them only to that process.</p>
-<p>Enter only values you want to add or change. Blank fields keep the stored value unchanged. Values are not displayed or logged.</p>
+<style>:root{color-scheme:dark;--ink:#eaf0f8;--muted:#9aa9bc;--line:#2c3a4d;--panel:#111b2a;--panel-2:#172438;--accent:#77e3ba;--accent-ink:#062218}*{box-sizing:border-box}body{min-height:100vh;margin:0;padding:clamp(1.5rem,6vw,5rem) 1rem;background:radial-gradient(circle at 12% 4%,#233a52 0,transparent 31rem),#0a101a;color:var(--ink);font:16px/1.5 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}main{max-width:44rem;margin:auto;padding:clamp(1.5rem,4vw,3rem);border:1px solid var(--line);border-radius:1.25rem;background:linear-gradient(145deg,var(--panel-2),var(--panel));box-shadow:0 2rem 6rem #0008}.eyebrow{margin-bottom:1rem;color:var(--accent);font-size:.72rem;font-weight:700;letter-spacing:.16em}h1{margin:0;color:#fff;font:700 clamp(2rem,5vw,3.4rem)/.95 Georgia,serif;letter-spacing:-.04em}.lede{max-width:38rem;margin:1.75rem 0 1rem;color:#d7e0eb}.notice{margin:0;padding:.85rem 1rem;border-left:3px solid var(--accent);background:#0b1721;color:var(--muted);font-size:.88rem}.error{margin:1.5rem 0 0;padding:1rem;border:1px solid #d77979;border-radius:.65rem;background:#361b26;color:#ffd9d9}.error-followup{margin:.8rem 0 0;color:var(--muted);font-size:.88rem}label{display:block;margin:1.4rem 0}label strong{display:block;color:#fff;font-size:.86rem;letter-spacing:.05em}small{display:block;margin:.28rem 0 .5rem;color:var(--muted);font-size:.8rem}input{width:100%;border:1px solid #40526a;border-radius:.6rem;padding:.8rem .9rem;background:#09111c;color:var(--ink);font:inherit;outline:none}input:focus{border-color:var(--accent);box-shadow:0 0 0 3px #77e3ba2b}button{margin:.45rem .5rem 0 0;border:1px solid #627087;border-radius:.5rem;padding:.75rem 1rem;background:transparent;color:var(--ink);font:700 .8rem ui-monospace,SFMono-Regular,Menlo,monospace;cursor:pointer}button:first-of-type{border-color:var(--accent);background:var(--accent);color:var(--accent-ink)}button:hover{transform:translateY(-1px)}</style>
+<main><div class="eyebrow">SECRET WRAPPER · LOCAL AUTHORIZATION</div>
+<h1>Authorize the launch.</h1>
+<p class="lede"><strong>${escapeHtml(processName)}</strong> needs the values below before it can start. Secret Wrapper will store submitted values in <strong>${escapeHtml(provider)}</strong> and pass them only to that process.</p>
+<p class="notice">Enter only values you want to add or change. Blank fields keep the stored value unchanged. Values are not displayed or logged.</p>
 <form method="post" action="${action}">${fields}
-<button type="submit">Save and continue</button><button type="submit" name="cancel" value="1">Cancel</button></form>
+<button type="submit">Save and continue</button><button type="submit" name="cancel" value="1">Cancel</button></form></main>
 </html>`;
 }
 
@@ -74,11 +75,12 @@ function resultPage(outcomes) {
   return `<!doctype html>
 <html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Secret Wrapper authorization complete</title>
-<style>body{font:16px system-ui,sans-serif;max-width:42rem;margin:3rem auto;padding:0 1rem}li{margin:.5rem 0}</style>
-<h1>Authorization complete</h1>
-<p>Secret Wrapper checked each value again immediately before saving.</p>
-<ul>${items}</ul>
-<p>You can close this tab.</p>
+<style>:root{color-scheme:dark;--ink:#eaf0f8;--muted:#9aa9bc;--line:#2c3a4d;--panel:#111b2a;--panel-2:#172438;--accent:#77e3ba}*{box-sizing:border-box}body{min-height:100vh;margin:0;padding:clamp(1.5rem,6vw,5rem) 1rem;background:radial-gradient(circle at 12% 4%,#233a52 0,transparent 31rem),#0a101a;color:var(--ink);font:16px/1.5 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}main{max-width:44rem;margin:auto;padding:clamp(1.5rem,4vw,3rem);border:1px solid var(--line);border-radius:1.25rem;background:linear-gradient(145deg,var(--panel-2),var(--panel));box-shadow:0 2rem 6rem #0008}.eyebrow{margin-bottom:1rem;color:var(--accent);font-size:.72rem;font-weight:700;letter-spacing:.16em}h1{margin:0;color:#fff;font:700 clamp(2rem,5vw,3.4rem)/.95 Georgia,serif;letter-spacing:-.04em}.lede{margin:1.75rem 0;color:#d7e0eb}.status{margin:0;padding:0;list-style:none}.status li{margin:.7rem 0;padding:.8rem 1rem;border:1px solid #304157;border-radius:.65rem;background:#0b1721}.status strong{color:var(--accent)}.close{margin:1.75rem 0 0;color:var(--muted)}</style>
+<main><div class="eyebrow">SECRET WRAPPER · LOCAL AUTHORIZATION</div>
+<h1>Authorization complete.</h1>
+<p class="lede">Secret Wrapper checked each value again immediately before saving.</p>
+<ul class="status">${items}</ul>
+<p class="close">You can close this tab.</p></main>
 </html>`;
 }
 
@@ -86,7 +88,7 @@ function resultPage(outcomes) {
 function errorPage(bindings, action, context, error) {
   return page(bindings, action, context).replace(
     "<form method=\"post\"",
-    `<p role="alert"><strong>Secret Wrapper could not save the submitted values.</strong> ${escapeHtml(error)}</p><p>Correct the values or resolve the provider error, then submit again. Values are not shown or retained in this page.</p><form method="post"`,
+    `<p class="error" role="alert"><strong>Secret Wrapper could not save the submitted values.</strong> ${escapeHtml(error)}</p><p class="error-followup">Correct the values or resolve the provider error, then submit again. Values are not shown or retained in this page.</p><form method="post"`,
   );
 }
 
