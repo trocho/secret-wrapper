@@ -16,21 +16,29 @@ sequenceDiagram
     participant Wrapper as Secret Wrapper
     participant Adapter as Provider adapter
     participant Provider as Secret provider
+    participant Browser as Local browser form
     participant Child as MCP server or target command
 
-    Caller->>Wrapper: start target command and specify ENV_NAME
-    Wrapper->>Adapter: request secret
-    Adapter->>Provider: retrieve secret
-    alt a value is unavailable
-        Wrapper->>Caller: open one local authorization page for every bind
-        Caller->>Wrapper: submit values to the local page
-        Wrapper->>Adapter: save only submitted values
-        Adapter->>Provider: patch the selected value
-        Provider-->>Adapter: updated source value
+    Caller->>Wrapper: start target command with binds
+    Wrapper->>Adapter: retrieve all bound values
+    Adapter->>Provider: retrieve values
+    alt all values are available
+        Provider-->>Adapter: values
+        Adapter-->>Wrapper: resolved values
+    else one or more values are unavailable
+        Provider-->>Adapter: unavailable
+        Adapter-->>Wrapper: authorization required
+        Wrapper->>Browser: open one local form for all binds
+        Browser-->>Wrapper: submitted values
+        Wrapper->>Adapter: save non-empty values
+        Adapter->>Provider: patch selected values
+        Provider-->>Adapter: values saved
+        Wrapper->>Adapter: retrieve all bound values again
+        Adapter->>Provider: retrieve values
+        Provider-->>Adapter: values
+        Adapter-->>Wrapper: resolved values
     end
-    Provider-->>Adapter: secret value
-    Adapter-->>Wrapper: secret value
-    Wrapper->>Child: start with ENV_NAME=secret value
+    Wrapper->>Child: start with bound environment values
 ```
 
 ## Candidate build
