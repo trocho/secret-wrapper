@@ -8,7 +8,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const expectedPngs = [
   "authorization-form.png",
   "authorization-success.png",
-  "authorization-error.png",
+  "authorization-retry.png",
 ];
 const expectedSize = { width: 1200, height: 900 };
 

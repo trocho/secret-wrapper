@@ -9,7 +9,7 @@ Use one artifact per state:
 | CLI begins and waits for authorization | `render-terminal-trace.mjs` | `docs/assets/terminal-flow.svg` |
 | One local form for all missing values | `node tests/scripts/authorization-demo.mjs` | `docs/assets/authorization-form.png` |
 | Values saved or concurrently preserved | Submit harmless placeholders in the demo | `docs/assets/authorization-success.png` |
-| Provider rejects a save; user can retry | `node tests/scripts/authorization-demo.mjs --failure` | `docs/assets/authorization-error.png` |
+| Provider rejects a save; user can retry | `node tests/scripts/authorization-demo.mjs --failure` | `docs/assets/authorization-retry.png` |
 
 ## Browser capture
 

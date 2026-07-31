@@ -53,7 +53,7 @@ The screenshots below are from the real local browser flow using demo names and 
 
 | Provider failure: safe diagnostic and retry |
 | --- |
-| ![Secret Wrapper authorization error page](docs/assets/authorization-error.png) |
+| ![Secret Wrapper authorization error page](docs/assets/authorization-retry.png) |
 
 The form appears only after a provider confirms a value is missing. It states which local process is waiting, never displays existing values, and gives a clear status after submission: created, updated, preserved because another process supplied a value first, or unchanged because the field was blank. If a write fails, the form keeps the user in the local page with a safe diagnostic and a retry path.
 
