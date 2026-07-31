@@ -57,6 +57,8 @@ The screenshots below are from the real local browser flow using demo names and 
 
 The form appears only after a provider confirms a value is missing. It states which local process is waiting, never displays existing values, and gives a clear status after submission: created, updated, preserved because another process supplied a value first, or unchanged because the field was blank. If a write fails, the form keeps the user in the local page with a safe diagnostic and a retry path.
 
+Maintainers can add or refresh these assets with the repository's [visual documentation skill](skills/secret-wrapper-visuals/SKILL.md). It includes the safe demo launcher, terminal-trace generator, visual language, and validation steps.
+
 ## Candidate build
 
 This is an unpublished candidate for local testing. It cannot be accidentally published to npm.

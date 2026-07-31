@@ -86,10 +86,13 @@ function resultPage(outcomes) {
 
 
 function errorPage(bindings, action, context, error) {
-  return page(bindings, action, context).replace(
-    "<form method=\"post\"",
-    `<p class="error" role="alert"><strong>Secret Wrapper could not save the submitted values.</strong> ${escapeHtml(error)}</p><p class="error-followup">Correct the values or resolve the provider error, then submit again. Values are not shown or retained in this page.</p><form method="post"`,
-  );
+  return page(bindings, action, context)
+    .replace("</style>", ".with-error{padding:1.5rem}.with-error h1{font-size:2.55rem}.with-error .lede{margin:.9rem 0 .65rem;font-size:.9rem}.with-error .notice{padding:.6rem .75rem;font-size:.78rem}.with-error .error{margin:.75rem 0 0;padding:.65rem;font-size:.83rem}.with-error .error-followup{margin:.5rem 0;font-size:.75rem}.with-error label{margin:.55rem 0}.with-error small{margin:.15rem 0 .3rem}.with-error input{padding:.55rem .7rem}.with-error button{margin-top:.25rem;padding:.6rem .8rem}</style>")
+    .replace("<main>", "<main class=\"with-error\">")
+    .replace(
+      "<form method=\"post\"",
+      `<p class="error" role="alert"><strong>Secret Wrapper could not save the submitted values.</strong> ${escapeHtml(error)}</p><p class="error-followup">Correct the values or resolve the provider error, then submit again. Values are not shown or retained in this page.</p><form method="post"`,
+    );
 }
 
 

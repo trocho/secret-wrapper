@@ -6,7 +6,7 @@
     "url": "https://github.com/trocho"
   },
   "metadata": {
-    "description": "Headless local secret adapters for tools and MCP servers."
+    "description": "Local-first secret adapters for tools and MCP servers."
   },
   "plugins": [
     {
