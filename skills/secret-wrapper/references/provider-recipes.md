@@ -2,6 +2,8 @@
 
 Each recipe starts a target command with a bind. A bind is `ENV_NAME=SELECTOR`: the variable delivered to the target and its provider location. Repeat `--bind` for additional values. Replace the uppercase placeholders and the target path; never replace them with a secret value. Install and authenticate the selected provider's own CLI first; this wrapper selects and passes values but does not log in to the provider.
 
+If a bind is unavailable, `run` opens a local browser form only for macOS Keychain, Linux Secret Service, and Bitwarden. It collects every configured bind in one submission, keeps blank fields unchanged, saves the values, and retries the command. Use `secret-wrapper authorize` with the same provider and binds to change existing values without starting the target.
+
 To trace a recipe, add `--debug` before `--`. It logs the selected location and lifecycle stages but never the secret value or provider authentication.
 
 ## macOS Keychain

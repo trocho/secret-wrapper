@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createRunner, parseArguments, parseBindings, resolveBindingSecret } from "../src/cli.mjs";
-import { buildChildEnvironment, loadSecret, ProviderError } from "../src/providers.mjs";
+import { buildChildEnvironment, loadSecret, ProviderError, saveSecret } from "../src/providers.mjs";
 import { decodeSecret, evaluateSelector, parseSelector } from "../src/selector.mjs";
+import { SecretValue } from "../src/secret-value.mjs";
+import { authorizeBindings, collectBrowserValues } from "../src/setup.mjs";
 
 
 test("a selector keeps names separate from ordered transforms", () => {
@@ -52,6 +54,74 @@ test("selector operations are explicit, ordered, and scalar", () => {
 });
 
 
+test("SecretValue reads and patches a JSON leaf without losing sibling values", () => {
+  const encoded = Buffer.from(JSON.stringify({ api: { token: "old", endpoint: "https://api.example" }, enabled: true })).toString("base64");
+  const operations = [
+    { type: "transform", name: "base64" },
+    { type: "transform", name: "json" },
+    { type: "property", name: "api" },
+    { type: "property", name: "token" },
+  ];
+  const value = new SecretValue(encoded, operations);
+  assert.equal(value.read(), "old");
+  assert.equal(
+    value.with("new").source,
+    Buffer.from(JSON.stringify({ api: { token: "new", endpoint: "https://api.example" }, enabled: true })).toString("base64"),
+  );
+  assert.equal(
+    new SecretValue(undefined, operations).with("new").source,
+    Buffer.from('{"api":{"token":"new"}}').toString("base64"),
+  );
+  const arrayValue = new SecretValue('{"tokens":["b2xk"]}', [
+    { type: "transform", name: "json" },
+    { type: "property", name: "tokens" },
+    { type: "property", name: "0" },
+    { type: "transform", name: "base64" },
+  ]);
+  assert.equal(arrayValue.read(), "old");
+  assert.equal(arrayValue.with("new").source, '{"tokens":["bmV3"]}');
+});
+
+
+test("browser authorization collects every bind from a local English form", async () => {
+  let resolveOpened;
+  const opened = new Promise((resolve) => {
+    resolveOpened = resolve;
+  });
+  const bindings = [
+    { name: "API_TOKEN", selector: parseSelector("portainer.api-key") },
+    { name: "PASSWORD", selector: parseSelector("portainer.password") },
+  ];
+  const valuesPromise = collectBrowserValues(bindings, { provider: "macOS Keychain", processName: "portainer-mcp" }, {
+    open: async (url) => resolveOpened(url),
+  });
+  const url = await opened;
+  const form = await fetch(url).then((response) => response.text());
+  assert.match(form, /portainer-mcp/);
+  assert.match(form, /needs the values below/i);
+  assert.match(form, /macOS Keychain/);
+  assert.match(form, /API_TOKEN/);
+  await fetch(url, {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: "bind-0=api-token&bind-1=password",
+  });
+  assert.deepEqual(await valuesPromise, { API_TOKEN: "api-token", PASSWORD: "password" });
+});
+
+
+test("browser authorization does not open a form for read-only providers", async () => {
+  await assert.rejects(
+    authorizeBindings("bws", [{ name: "API_TOKEN", selector: parseSelector("secret") }], {
+      collectValues: async () => {
+        throw new Error("must not collect");
+      },
+    }),
+    /does not support browser authorization yet/,
+  );
+});
+
+
 test("macOS Keychain selector selects a service and account", () => {
   const calls = [];
   const selected = loadSecret("macos-keychain", {
@@ -74,6 +144,32 @@ test("Linux Secret Service selector selects a service and account", () => {
     return "token\n";
   });
   assert.deepEqual(selected, { value: "token", operations: [] });
+});
+
+
+test("native providers save a patched source value", () => {
+  const binding = { selector: parseSelector("example-mcp.config[json].api.token") };
+  const calls = [];
+  saveSecret("macos-keychain", binding, "new", (command, arguments_) => {
+    calls.push([command, arguments_]);
+    return command === "security" && arguments_[0] === "find-generic-password"
+      ? '{"api":{"token":"old","region":"eu"}}\n'
+      : "";
+  });
+  assert.deepEqual(calls.at(-1), ["security", [
+    "add-generic-password", "-U", "-s", "example-mcp", "-a", "config", "-w", '{"api":{"token":"new","region":"eu"}}',
+  ]]);
+
+  saveSecret("linux-secret-service", binding, "new", (command, arguments_, options) => {
+    calls.push([command, arguments_, options]);
+    if (command === "secret-tool" && arguments_[0] === "lookup") {
+      throw new ProviderError("missing");
+    }
+    return "";
+  });
+  assert.deepEqual(calls.at(-1), ["secret-tool", [
+    "store", "--label=example-mcp", "service", "example-mcp", "account", "config",
+  ], { input: '{"api":{"token":"new"}}' }]);
 });
 
 
@@ -107,6 +203,38 @@ test("Bitwarden selector selects a built-in or custom field", () => {
     return JSON.stringify({ fields: [{ name: "config", value: '{"api":{"token":"value"}}' }] });
   });
   assert.equal(resolveBindingSecret(custom), "value");
+});
+
+
+test("Bitwarden saves an existing item or creates a missing item through stdin", () => {
+  const binding = { selector: parseSelector("portainer.config[json].api.token") };
+  const existingCalls = [];
+  saveSecret("bitwarden", binding, "new", (command, arguments_, options) => {
+    existingCalls.push([command, arguments_, options]);
+    if (arguments_[0] === "get") {
+      return JSON.stringify({ id: "item-id", name: "portainer", fields: [{ name: "config", value: '{"api":{"token":"old","region":"eu"}}' }] });
+    }
+    return "";
+  });
+  const edited = JSON.parse(Buffer.from(existingCalls.at(-1)[2].input, "base64").toString("utf8"));
+  assert.deepEqual(existingCalls.at(-1).slice(0, 2), ["bw", ["edit", "item", "item-id"]]);
+  assert.equal(edited.fields[0].value, '{"api":{"token":"new","region":"eu"}}');
+
+  const createdCalls = [];
+  saveSecret("bitwarden", { selector: parseSelector("new-item.password") }, "new", (command, arguments_, options) => {
+    createdCalls.push([command, arguments_, options]);
+    if (arguments_[0] === "get") {
+      throw new ProviderError("missing");
+    }
+    if (arguments_[0] === "list") {
+      return "[]";
+    }
+    return "";
+  });
+  const created = JSON.parse(Buffer.from(createdCalls.at(-1)[2].input, "base64").toString("utf8"));
+  assert.deepEqual(createdCalls.at(-1).slice(0, 2), ["bw", ["create", "item"]]);
+  assert.equal(created.name, "new-item");
+  assert.equal(created.login.password, "new");
 });
 
 
@@ -218,6 +346,12 @@ test("run has one provider-neutral bind contract without decoding flags", () => 
   assert.equal(parseArguments([
     "run", "--provider", "bws", "--bind", "API_TOKEN=secret-id", "--debug", "--", "tool",
   ]).options.debug, true);
+  assert.deepEqual(parseArguments([
+    "authorize", "--provider", "macos-keychain", "--bind", "API_TOKEN=example.api-key",
+  ]), {
+    action: "authorize",
+    options: { provider: "macos-keychain", bind: ["API_TOKEN=example.api-key"] },
+  });
   assert.throws(() => parseArguments([
     "run", "--provider", "bws", "--bind", "API_TOKEN=secret-id", "--decode-value", "API_TOKEN=base64", "--", "tool",
   ]), /invalid option/);
@@ -301,6 +435,9 @@ test("run injects every transformed value and never launches after a resolution 
 
     const failed = await createRunner({
       load: () => ({ value: "not-base64", operations: [{ type: "transform", name: "base64" }] }),
+      authorize: async () => {
+        throw new ProviderError("authorization was cancelled");
+      },
       launchProcess: async () => {
         throw new Error("target must not start");
       },
@@ -320,4 +457,55 @@ test("run injects every transformed value and never launches after a resolution 
   } finally {
     console.error = previousError;
   }
+});
+
+
+test("run authorizes every bind once, then retries before launching", async () => {
+  let authorized = false;
+  let launched = false;
+  const result = await createRunner({
+    load: (_provider, binding) => {
+      if (!authorized) {
+        throw new ProviderError("missing");
+      }
+      return { value: `${binding.name.toLowerCase()}-value`, operations: [] };
+    },
+    authorize: async (provider, bindings, context) => {
+      assert.equal(provider, "macos-keychain");
+      assert.deepEqual(bindings.map((binding) => binding.name), ["API_TOKEN", "PASSWORD"]);
+      assert.equal(context.processName, "target");
+      authorized = true;
+    },
+    launchProcess: async (_command, environment) => {
+      launched = true;
+      assert.equal(environment.API_TOKEN, "api_token-value");
+      assert.equal(environment.PASSWORD, "password-value");
+      return 0;
+    },
+  })([
+    "run", "--provider", "macos-keychain", "--bind", "API_TOKEN=example.api", "--bind", "PASSWORD=example.password", "--", "target",
+  ]);
+  assert.equal(result, 0);
+  assert.equal(authorized, true);
+  assert.equal(launched, true);
+});
+
+
+test("authorize opens the setup flow without launching a target", async () => {
+  let launched = false;
+  const result = await createRunner({
+    authorize: async (provider, bindings, context) => {
+      assert.equal(provider, "macos-keychain");
+      assert.deepEqual(bindings.map((binding) => binding.name), ["API_TOKEN"]);
+      assert.equal(context.processName, "A local process");
+    },
+    launchProcess: async () => {
+      launched = true;
+      return 0;
+    },
+  })([
+    "authorize", "--provider", "macos-keychain", "--bind", "API_TOKEN=example.api",
+  ]);
+  assert.equal(result, 0);
+  assert.equal(launched, false);
 });
