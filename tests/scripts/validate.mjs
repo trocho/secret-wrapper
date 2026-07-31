@@ -32,6 +32,7 @@ for (const path of [
   resolve(rootVisualSkill, "references/authorization-visuals.md"),
   resolve(root, "package.json"),
   resolve(root, "skills/secret-wrapper/references/provider-recipes.md"),
+  resolve(root, "skills/secret-wrapper/references/mcp-host-configurations.md"),
 ]) {
   require_(statSync(path).isFile(), `missing ${path}`);
 }

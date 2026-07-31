@@ -31,6 +31,10 @@ Supported providers are `macos-keychain`, `linux-secret-service`, `windows-crede
 
 When configuring a specific provider, read [references/provider-recipes.md](references/provider-recipes.md) and use its matching copy-ready command. Do not load it for a provider-neutral launcher change.
 
+## MCP host configuration
+
+When adding the launcher to Codex, Claude Code, or another MCP host, read [references/mcp-host-configurations.md](references/mcp-host-configurations.md). Use its command/argument structure unchanged and keep credentials out of the host's `env` block.
+
 ## Verify
 
 Run a non-destructive startup check. Do not print the secret or use a target command that exposes its environment. On supported providers, a confirmed missing value opens the local authorization form; malformed values and provider failures fail with exit code 78 instead. The completion page reports whether each value was created, updated, preserved, or left unchanged. Do not reset provider credentials or persist the secret outside its provider.
