@@ -1,16 +1,20 @@
 import { spawn } from "node:child_process";
+import { basename } from "node:path";
 import { buildChildEnvironment, loadSecret, ProviderError, providerNames } from "./providers.mjs";
-import { evaluateSelector, parseSelector, selectorText } from "./selector.mjs";
+import { parseSelector, selectorText } from "./selector.mjs";
+import { authorizeBindings } from "./setup.mjs";
+import { SecretValue } from "./secret-value.mjs";
 
 
 const usage = `Usage:
   secret-wrapper run --provider PROVIDER --bind ENV_NAME=SELECTOR [--bind ENV_NAME=SELECTOR ...] [--scope NAME=VALUE ...] [--debug] -- COMMAND [ARGS...]
+  secret-wrapper authorize --provider PROVIDER --bind ENV_NAME=SELECTOR [--bind ENV_NAME=SELECTOR ...] [--scope NAME=VALUE ...] [--debug]
 
 Providers:
   ${providerNames.join(", ")}
 
 Selectors support ordered [base64] and [json] transforms; [json] is required before a JSON property.
-Run always has the same shape. Each bind names a target environment variable and the selector that supplies it. See README for provider recipes.`;
+Run opens a local authorization page when a value is unavailable. Authorize opens the same page to change values explicitly. Each bind names a target environment variable and the selector that supplies it. See README for provider recipes.`;
 
 
 const processControlVariables = new Set([
@@ -72,6 +76,17 @@ function scopes(values = []) {
 }
 
 
+function parseOptions(arguments_) {
+  const options = parseOptionPairs(
+    arguments_,
+    ["provider", "bind", "scope", "debug"],
+    ["bind", "scope"],
+  );
+  requireRunOptions(options);
+  return options;
+}
+
+
 function parseRunArguments(arguments_) {
   if (arguments_.length === 0 || arguments_[0] === "--help" || arguments_[0] === "-h") {
     return { help: true };
@@ -83,12 +98,7 @@ function parseRunArguments(arguments_) {
   if (separator === -1 || separator === arguments_.length - 1) {
     throw new ProviderError("provide the target command after --");
   }
-  const options = parseOptionPairs(
-    arguments_.slice(1, separator),
-    ["provider", "bind", "scope", "debug"],
-    ["bind", "scope"],
-  );
-  requireRunOptions(options);
+  const options = parseOptions(arguments_.slice(1, separator));
   return {
     action: "run",
     options,
@@ -98,8 +108,29 @@ function parseRunArguments(arguments_) {
 }
 
 
+function parseAuthorizeArguments(arguments_) {
+  if (arguments_[0] !== "authorize") {
+    throw new ProviderError("expected the run or authorize command");
+  }
+  const options = parseOptions(arguments_.slice(1));
+  return {
+    action: "authorize",
+    options,
+    bindings: parseBindings(options),
+  };
+}
+
+
+function parseCommandArguments(arguments_) {
+  if (arguments_.length === 0 || arguments_[0] === "--help" || arguments_[0] === "-h") {
+    return { help: true };
+  }
+  return arguments_[0] === "run" ? parseRunArguments(arguments_) : parseAuthorizeArguments(arguments_);
+}
+
+
 export function parseArguments(arguments_) {
-  const parsed = parseRunArguments(arguments_);
+  const parsed = parseCommandArguments(arguments_);
   if (parsed.help) {
     return parsed;
   }
@@ -141,7 +172,7 @@ export function parseBindings(options) {
 
 
 export function resolveBindingSecret(selected) {
-  return evaluateSelector(selected.value, selected.operations);
+  return new SecretValue(selected.value, selected.operations).read();
 }
 
 
@@ -169,11 +200,12 @@ async function runWithDependencies(arguments_, dependencies) {
     load = loadSecret,
     buildEnvironment = buildChildEnvironment,
     launchProcess = launch,
+    authorize = authorizeBindings,
     parentEnvironment = process.env,
   } = dependencies;
   let parsed;
   try {
-    parsed = parseRunArguments(arguments_);
+    parsed = parseCommandArguments(arguments_);
     if (parsed.help) {
       console.log(usage);
       return 0;
@@ -188,10 +220,22 @@ async function runWithDependencies(arguments_, dependencies) {
       const bindingSummary = bindings.map((binding) => `${binding.name}=${selectorText(binding.selector)}`).join(", ");
       writeDebug(true, `provider=${parsed.options.provider}; binds=${bindingSummary}; scope=${scopeNames}`);
     }
+    if (parsed.action === "authorize") {
+      await authorize(parsed.options.provider, bindings, { processName: "A local process" });
+      return 0;
+    }
     writeDebug(parsed.options.debug, `retrieving ${bindings.length} secret value${bindings.length === 1 ? "" : "s"}`);
     const values = {};
-    for (const binding of bindings) {
-      values[binding.name] = resolveBindingSecret(load(parsed.options.provider, binding));
+    try {
+      for (const binding of bindings) {
+        values[binding.name] = resolveBindingSecret(load(parsed.options.provider, binding));
+      }
+    } catch (error) {
+      writeDebug(parsed.options.debug, "a value is unavailable; opening authorization page");
+      await authorize(parsed.options.provider, bindings, { processName: basename(parsed.command[0]) });
+      for (const binding of bindings) {
+        values[binding.name] = resolveBindingSecret(load(parsed.options.provider, binding));
+      }
     }
     writeDebug(parsed.options.debug, "secret values retrieved; starting target process");
     const environment = buildEnvironment(

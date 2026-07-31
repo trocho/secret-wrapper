@@ -6,6 +6,8 @@ Headless local secret adapters for launching MCP servers, coding tools, and scri
 
 MCP configuration, Compose files, and shell startup scripts often need an API token. This CLI keeps configuration free of the secret itself and retrieves it only when the target command starts.
 
+On first use, a missing value can be collected in a one-time browser form on `127.0.0.1`, stored with the selected provider, and then used to start the target command. The secret is never put in the MCP configuration, shell history, or debug output.
+
 ## How it works
 
 ```mermaid
@@ -19,6 +21,13 @@ sequenceDiagram
     Caller->>Wrapper: start target command and specify ENV_NAME
     Wrapper->>Adapter: request secret
     Adapter->>Provider: retrieve secret
+    alt a value is unavailable
+        Wrapper->>Caller: open one local authorization page for every bind
+        Caller->>Wrapper: submit values to the local page
+        Wrapper->>Adapter: save only submitted values
+        Adapter->>Provider: patch the selected value
+        Provider-->>Adapter: updated source value
+    end
     Provider-->>Adapter: secret value
     Adapter-->>Wrapper: secret value
     Wrapper->>Child: start with ENV_NAME=secret value
@@ -52,6 +61,29 @@ secret-wrapper run \
 
 Replace only the provider location and the target command. Never put the secret value into the command or shell history.
 
+## First use and changing values
+
+`run` is the one-command path. If a value cannot be read and the selected provider supports browser authorization, Secret Wrapper opens one local browser tab for every bind, waits for the user to submit it, saves non-empty values, and retries before starting the target. The tab identifies the target process, provider, and selectors; it never displays any existing secret value.
+
+```sh
+secret-wrapper run \
+  --provider macos-keychain \
+  --bind PORTAINER_API_KEY=portainer-mcp.api-key \
+  --bind PORTAINER_PASSWORD=portainer-mcp.password \
+  -- /absolute/path/to/portainer-mcp
+```
+
+To add or replace values deliberately, run `authorize` with the same provider, binds, and optional scope. It opens the same local form but does not start a target process.
+
+```sh
+secret-wrapper authorize \
+  --provider bitwarden \
+  --bind PORTAINER_API_KEY=portainer.api-key \
+  --bind PORTAINER_PASSWORD=portainer.password
+```
+
+Leave a form field blank to preserve its current value. When a selector points inside JSON, Secret Wrapper reads the source value, patches only the selected property or array entry, and writes the transformed source back. Other JSON values remain intact.
+
 ## Command model
 
 | Argument | Meaning |
@@ -70,6 +102,15 @@ secret-wrapper run \
   --bind ENV_NAME=SELECTOR [--bind ENV_NAME=SELECTOR ...] \
   [--scope NAME=VALUE ...] [--debug] \
   -- TARGET [ARGS...]
+```
+
+To change values without launching a target:
+
+```sh
+secret-wrapper authorize \
+  --provider PROVIDER \
+  --bind ENV_NAME=SELECTOR [--bind ENV_NAME=SELECTOR ...] \
+  [--scope NAME=VALUE ...] [--debug]
 ```
 
 ## Install the skill
@@ -95,15 +136,15 @@ The skill tells Codex and Claude Code to use this consistent, secret-safe comman
 
 A selector is the right side of a bind: `ENV_NAME=SELECTOR`. It identifies one value without a separate item/field vocabulary. Its first segment is the provider's record locator; the second is the value within that record where the provider has one. Transform annotations are attached directly to the value they transform: `[base64]` decodes text and `[json]` parses JSON text. Escape literal `.`, `\`, `[` and `]` as `\.`, `\\`, `\[` and `\]`, and quote the whole bind so the shell preserves the escape.
 
-| Provider | Value for `--provider` | Selector structure | Example |
-| --- | --- | --- | --- |
-| macOS Keychain | `macos-keychain` | `SERVICE.ACCOUNT[TRANSFORMS][.JSON_PROPERTY[TRANSFORMS]...]` | `portainer-mcp.api-key[base64]` |
-| Linux Secret Service | `linux-secret-service` | `SERVICE.ACCOUNT[TRANSFORMS][.JSON_PROPERTY[TRANSFORMS]...]` | `portainer-mcp.api-key[base64]` |
-| Windows Credential Manager | `windows-credential-manager` | `TARGET[TRANSFORMS][.JSON_PROPERTY[TRANSFORMS]...]` | `portainer-mcp-api-key[json].token` |
-| Bitwarden | `bitwarden` | `ITEM.FIELD[TRANSFORMS][.JSON_PROPERTY[TRANSFORMS]...]` | `portainer.password[base64]` |
-| Bitwarden Secrets Manager | `bws` | `SECRET_ID[.value][TRANSFORMS][.JSON_PROPERTY[TRANSFORMS]...]` | `SECRET_ID.value[base64]` |
-| 1Password | `1password` | `ITEM.FIELD[TRANSFORMS][.JSON_PROPERTY[TRANSFORMS]...]`; add `--scope vault=VAULT` | `portainer.api-key[base64]` |
-| Infisical | `infisical` | `SECRET_KEY[.value][TRANSFORMS][.JSON_PROPERTY[TRANSFORMS]...]` | `PORTAINER_API_KEY.value[base64]` |
+| Provider | Value for `--provider` | Browser authorization | Selector structure | Example |
+| --- | --- | --- | --- | --- |
+| macOS Keychain | `macos-keychain` | Yes | `SERVICE.ACCOUNT[TRANSFORMS][.JSON_PROPERTY[TRANSFORMS]...]` | `portainer-mcp.api-key[base64]` |
+| Linux Secret Service | `linux-secret-service` | Yes | `SERVICE.ACCOUNT[TRANSFORMS][.JSON_PROPERTY[TRANSFORMS]...]` | `portainer-mcp.api-key[base64]` |
+| Windows Credential Manager | `windows-credential-manager` | Not yet | `TARGET[TRANSFORMS][.JSON_PROPERTY[TRANSFORMS]...]` | `portainer-mcp-api-key[json].token` |
+| Bitwarden | `bitwarden` | Yes | `ITEM.FIELD[TRANSFORMS][.JSON_PROPERTY[TRANSFORMS]...]` | `portainer.password[base64]` |
+| Bitwarden Secrets Manager | `bws` | Not yet | `SECRET_ID[.value][TRANSFORMS][.JSON_PROPERTY[TRANSFORMS]...]` | `SECRET_ID.value[base64]` |
+| 1Password | `1password` | Not yet | `ITEM.FIELD[TRANSFORMS][.JSON_PROPERTY[TRANSFORMS]...]`; add `--scope vault=VAULT` | `portainer.api-key[base64]` |
+| Infisical | `infisical` | Not yet | `SECRET_KEY[.value][TRANSFORMS][.JSON_PROPERTY[TRANSFORMS]...]` | `PORTAINER_API_KEY.value[base64]` |
 
 `[json]` is required before JSON properties. For example, `portainer.config[json].api.token` selects the `config` field of the `portainer` item, parses it as JSON, then passes its `api.token` value to the target process. JSON properties may also name array indexes, such as `credentials.0.token`. The final selection must be text, a number, or a boolean.
 

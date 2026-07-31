@@ -6,8 +6,8 @@ import { linuxSecretService } from "./providers/linux-secret-service.mjs";
 import { macosKeychain } from "./providers/macos-keychain.mjs";
 import { onePassword } from "./providers/onepassword.mjs";
 import { windowsCredentialManager } from "./providers/windows-credential-manager.mjs";
-export { ProviderError } from "./provider-error.mjs";
 import { ProviderError } from "./provider-error.mjs";
+export { ProviderError } from "./provider-error.mjs";
 
 
 const providers = {
@@ -33,10 +33,11 @@ function providerFor(name) {
 }
 
 
-export function execute(command, arguments_) {
+export function execute(command, arguments_, options = {}) {
   const result = spawnSync(command, arguments_, {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
+    ...options,
   });
   if (result.error || result.status !== 0) {
     throw new ProviderError(`${command} could not retrieve the requested secret`);
@@ -47,6 +48,20 @@ export function execute(command, arguments_) {
 
 export function loadSecret(provider, binding, runCommand = execute) {
   return providerFor(provider).load(binding, runCommand);
+}
+
+
+export function saveSecret(provider, binding, value, runCommand = execute) {
+  const adapter = providerFor(provider);
+  if (!adapter.save) {
+    throw new ProviderError(`${provider} does not support browser authorization yet`);
+  }
+  adapter.save(binding, value, runCommand);
+}
+
+
+export function canSaveSecret(provider) {
+  return typeof providerFor(provider).save === "function";
 }
 
 
