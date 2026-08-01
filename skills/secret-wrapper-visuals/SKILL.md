@@ -11,7 +11,7 @@ Make a visual explain one user-visible moment: launch, missing-value authorizati
 
 1. Read [references/authorization-visuals.md](references/authorization-visuals.md).
 2. Use `tests/scripts/authorization-demo.mjs` for browser captures. It exercises the production local-form code with demo-only names.
-3. Generate a terminal visual with `scripts/render-terminal-trace.mjs`; do not hand-edit the SVG.
+3. Generate sequence and terminal visuals with the scripts in this skill; do not hand-edit generated SVG files.
 4. Capture the form, success, or failure state with the browser-control skill at the documented baseline viewport. Capture page content, not browser chrome or a local URL.
 5. Put final assets in `docs/assets/`, reference them next to the relevant README explanation, and use descriptive alt text.
 6. Run the visual checks and the repository validation before committing.
@@ -26,5 +26,6 @@ Make a visual explain one user-visible moment: launch, missing-value authorizati
 ## Resources
 
 - `scripts/render-terminal-trace.mjs` creates the sanitized SVG trace.
+- `scripts/render-operation-flow.mjs` creates the provider-neutral operation sequence.
 - `scripts/check-authorization-assets.mjs` enforces the shared screenshot dimensions.
 - `references/authorization-visuals.md` contains capture states, visual tokens, and validation commands.

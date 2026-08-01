@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="860" viewBox="0 0 1200 860" role="img" aria-labelledby="title description">
+  <title id="title">How Secret Wrapper launches a process</title>
+  <desc id="description">A generated provider-neutral launch sequence. Secret Wrapper retrieves bound values, opens a local authorization form only when a value is missing, and launches the target process after every value is available.</desc>
+  <rect width="1200" height="860" fill="#0a101a"/>
+  <text x="56" y="48" fill="#77e3ba" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" letter-spacing="2">SECRET WRAPPER · OPERATION SEQUENCE</text>
+  <text x="56" y="75" fill="#9aa9bc" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14">Secrets remain in the selected provider until the target starts.</text>
+  <g>
+    <rect x="28" y="86" width="204" height="72" rx="14" fill="#172438" stroke="#334155"/>
+    <text x="130" y="116" text-anchor="middle" fill="#f8fafc" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" font-weight="700">Launch</text>
+    <text x="130" y="140" text-anchor="middle" fill="#9aa9bc" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13">command</text>
+    <line x1="130" y1="158" x2="130" y2="810" stroke="#334155" stroke-dasharray="5 8"/>
+  </g>
+  <g>
+    <rect x="263" y="86" width="204" height="72" rx="14" fill="#172438" stroke="#334155"/>
+    <text x="365" y="116" text-anchor="middle" fill="#f8fafc" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" font-weight="700">Secret Wrapper</text>
+    <text x="365" y="140" text-anchor="middle" fill="#9aa9bc" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13">orchestrator</text>
+    <line x1="365" y1="158" x2="365" y2="810" stroke="#334155" stroke-dasharray="5 8"/>
+  </g>
+  <g>
+    <rect x="498" y="86" width="204" height="72" rx="14" fill="#172438" stroke="#334155"/>
+    <text x="600" y="116" text-anchor="middle" fill="#f8fafc" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" font-weight="700">Adapter</text>
+    <text x="600" y="140" text-anchor="middle" fill="#9aa9bc" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13">provider contract</text>
+    <line x1="600" y1="158" x2="600" y2="810" stroke="#334155" stroke-dasharray="5 8"/>
+  </g>
+  <g>
+    <rect x="733" y="86" width="204" height="72" rx="14" fill="#172438" stroke="#334155"/>
+    <text x="835" y="116" text-anchor="middle" fill="#f8fafc" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" font-weight="700">Secret store</text>
+    <text x="835" y="140" text-anchor="middle" fill="#9aa9bc" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13">existing provider</text>
+    <line x1="835" y1="158" x2="835" y2="810" stroke="#334155" stroke-dasharray="5 8"/>
+  </g>
+  <g>
+    <rect x="968" y="86" width="204" height="72" rx="14" fill="#172438" stroke="#334155"/>
+    <text x="1070" y="116" text-anchor="middle" fill="#f8fafc" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" font-weight="700">Target</text>
+    <text x="1070" y="140" text-anchor="middle" fill="#9aa9bc" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13">MCP or tool</text>
+    <line x1="1070" y1="158" x2="1070" y2="810" stroke="#334155" stroke-dasharray="5 8"/>
+  </g>
+  <g>
+    <line x1="142" y1="212" x2="349" y2="212" stroke="#77e3ba" stroke-width="2"/>
+    <path d="M349 212 l-10 -6 v12 z" fill="#77e3ba"/>
+    <rect x="150" y="185" width="195" height="22" rx="5" fill="#0a101a"/>
+    <text x="247.5" y="201" text-anchor="middle" fill="#dbe6f3" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13">start command with binds</text>
+  </g>
+  <g>
+    <line x1="377" y1="266" x2="584" y2="266" stroke="#77e3ba" stroke-width="2"/>
+    <path d="M584 266 l-10 -6 v12 z" fill="#77e3ba"/>
+    <rect x="385" y="239" width="195" height="22" rx="5" fill="#0a101a"/>
+    <text x="482.5" y="255" text-anchor="middle" fill="#dbe6f3" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13">resolve every selector</text>
+  </g>
+  <g>
+    <line x1="612" y1="320" x2="819" y2="320" stroke="#77e3ba" stroke-width="2"/>
+    <path d="M819 320 l-10 -6 v12 z" fill="#77e3ba"/>
+    <rect x="620" y="293" width="195" height="22" rx="5" fill="#0a101a"/>
+    <text x="717.5" y="309" text-anchor="middle" fill="#dbe6f3" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13">retrieve stored values</text>
+  </g>
+  <rect x="334" y="354" width="532" height="300" rx="18" fill="#111b2a" stroke="#3d526b"/>
+  <text x="356" y="382" fill="#77e3ba" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13" font-weight="700">ONLY WHEN A VALUE IS MISSING</text>
+  <g>
+    <line x1="823" y1="425" x2="616" y2="425" stroke="#77e3ba" stroke-width="2" stroke-dasharray="7 6"/>
+    <path d="M616 425 l10 -6 v12 z" fill="#77e3ba"/>
+    <rect x="620" y="398" width="195" height="22" rx="5" fill="#0a101a"/>
+    <text x="717.5" y="414" text-anchor="middle" fill="#dbe6f3" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13">missing value confirmed</text>
+  </g>
+  <g>
+    <line x1="588" y1="470" x2="381" y2="470" stroke="#77e3ba" stroke-width="2" stroke-dasharray="7 6"/>
+    <path d="M381 470 l10 -6 v12 z" fill="#77e3ba"/>
+    <rect x="385" y="443" width="195" height="22" rx="5" fill="#0a101a"/>
+    <text x="482.5" y="459" text-anchor="middle" fill="#dbe6f3" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13">authorization required</text>
+  </g>
+  <rect x="383" y="494" width="199" height="58" rx="12" fill="#172438" stroke="#77e3ba"/>
+  <text x="482" y="518" text-anchor="middle" fill="#f8fafc" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" font-weight="700">Local browser form</text>
+  <text x="482" y="539" text-anchor="middle" fill="#9aa9bc" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12">collect all missing values</text>
+  <g>
+    <line x1="377" y1="615" x2="819" y2="615" stroke="#77e3ba" stroke-width="2"/>
+    <path d="M819 615 l-10 -6 v12 z" fill="#77e3ba"/>
+    <rect x="385" y="588" width="430" height="22" rx="5" fill="#0a101a"/>
+    <text x="600" y="604" text-anchor="middle" fill="#dbe6f3" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13">save, then retrieve again</text>
+  </g>
+  <g>
+    <line x1="823" y1="690" x2="616" y2="690" stroke="#77e3ba" stroke-width="2" stroke-dasharray="7 6"/>
+    <path d="M616 690 l10 -6 v12 z" fill="#77e3ba"/>
+    <rect x="620" y="663" width="195" height="22" rx="5" fill="#0a101a"/>
+    <text x="717.5" y="679" text-anchor="middle" fill="#dbe6f3" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13">resolved values</text>
+  </g>
+  <g>
+    <line x1="588" y1="740" x2="381" y2="740" stroke="#77e3ba" stroke-width="2" stroke-dasharray="7 6"/>
+    <path d="M381 740 l10 -6 v12 z" fill="#77e3ba"/>
+    <rect x="385" y="713" width="195" height="22" rx="5" fill="#0a101a"/>
+    <text x="482.5" y="729" text-anchor="middle" fill="#dbe6f3" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13">all binds ready</text>
+  </g>
+  <g>
+    <line x1="377" y1="800" x2="1054" y2="800" stroke="#77e3ba" stroke-width="2"/>
+    <path d="M1054 800 l-10 -6 v12 z" fill="#77e3ba"/>
+    <rect x="385" y="773" width="665" height="22" rx="5" fill="#0a101a"/>
+    <text x="717.5" y="789" text-anchor="middle" fill="#dbe6f3" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13">launch with bound environment</text>
+  </g>
+</svg>

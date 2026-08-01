@@ -35,4 +35,9 @@ if (!trace.includes('width="1200"') || !trace.includes("sanitized terminal trace
   throw new Error("terminal-flow.svg must be the generated sanitized trace");
 }
 
+const operationFlow = readFileSync(resolve(root, "docs/assets/operation-flow.svg"), "utf8");
+if (!operationFlow.includes('width="1200"') || !operationFlow.includes("provider-neutral launch sequence")) {
+  throw new Error("operation-flow.svg must be the generated provider-neutral sequence");
+}
+
 console.log("visual assets are standardized");

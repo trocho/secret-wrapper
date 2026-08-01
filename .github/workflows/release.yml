@@ -44,6 +44,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
       - run: npm test
       - run: npm run validate
+      - run: npm run test:package-install
       - name: Pack npm artifact
         id: pack
         shell: bash

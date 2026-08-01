@@ -1,5 +1,9 @@
 # Secret Wrapper
 
+[![npm version](https://img.shields.io/npm/v/%40trocho%2Fsecret-wrapper)](https://www.npmjs.com/package/@trocho/secret-wrapper)
+[![Validate](https://github.com/trocho/secret-wrapper/actions/workflows/validate.yml/badge.svg)](https://github.com/trocho/secret-wrapper/actions/workflows/validate.yml)
+[![skills.sh](https://skills.sh/b/trocho/secret-wrapper)](https://skills.sh/trocho/secret-wrapper)
+
 Local-first secret adapters for launching MCP servers, coding tools, and scripts.
 
 ## Problem it solves
@@ -10,36 +14,7 @@ On first use, a confirmed missing value can be collected in a one-time browser f
 
 ## How it works
 
-```mermaid
-sequenceDiagram
-    participant Caller as Launch command
-    participant Wrapper as Secret Wrapper
-    participant Adapter as Provider adapter
-    participant Provider as Secret provider
-    participant Browser as Local browser form
-    participant Child as MCP server or target command
-
-    Caller->>Wrapper: start target command with binds
-    Wrapper->>Adapter: retrieve all bound values
-    Adapter->>Provider: retrieve values
-    alt all values are available
-        Provider-->>Adapter: values
-        Adapter-->>Wrapper: resolved values
-    else a provider confirms a value is missing
-        Provider-->>Adapter: unavailable
-        Adapter-->>Wrapper: authorization required
-        Wrapper->>Browser: open one local form for all binds
-        Browser-->>Wrapper: submitted values
-        Wrapper->>Adapter: save non-empty values
-        Adapter->>Provider: patch selected values
-        Provider-->>Adapter: values saved
-        Wrapper->>Adapter: retrieve all bound values again
-        Adapter->>Provider: retrieve values
-        Provider-->>Adapter: values
-        Adapter-->>Wrapper: resolved values
-    end
-    Wrapper->>Child: start with bound environment values
-```
+![Secret Wrapper sequence: resolve stored values, authorize missing values locally, then launch the target process](docs/assets/operation-flow.svg)
 
 ## See the authorization flow
 
@@ -59,19 +34,19 @@ The form appears only after a provider confirms a value is missing. It states wh
 
 Maintainers can add or refresh these assets with the repository's [visual documentation skill](skills/secret-wrapper-visuals/SKILL.md). It includes the safe demo launcher, terminal-trace generator, visual language, and validation steps.
 
-## Candidate build
+## Install
 
-This is an unpublished candidate for local testing. It cannot be accidentally published to npm.
+Run directly with `npx`:
 
 ```sh
-npm test
-node ./bin/secret-wrapper.mjs --help
+npx @trocho/secret-wrapper --help
 ```
 
-After publication, the same command will be available through:
+Or install the command globally on the machine that launches the target process:
 
 ```sh
-npx @trocho/secret-wrapper run --help
+npm install --global @trocho/secret-wrapper
+secret-wrapper --help
 ```
 
 ## Quick start
@@ -145,16 +120,12 @@ secret-wrapper authorize \
 
 Secret Wrapper is device-neutral: the launcher is a normal local process, so it works with any MCP client that can start a stdio command. The integrations below merely teach an agent the standard command shape; they do not receive or retain the secret.
 
-The CLI is still a GitHub-release candidate, not an npm publication. Install the current candidate once on the machine that launches the MCP server:
+Install the CLI once on the machine that launches the MCP server:
 
 ```sh
-git clone https://github.com/trocho/secret-wrapper.git
-cd secret-wrapper
-npm link
+npm install --global @trocho/secret-wrapper
 secret-wrapper --help
 ```
-
-After npm publication this becomes `npm install --global @trocho/secret-wrapper`.
 
 | Tool or surface | Best integration | Install once | Use afterward |
 | --- | --- | --- | --- |
@@ -295,4 +266,4 @@ npm run validate
 npm run pack:check
 ```
 
-Release tags build candidate artifacts for GitHub Releases. npm publication is intentionally not configured until dogfooding is complete.
+Release tags publish the matching package version to npm through Trusted Publishing and attach the npm and plugin artifacts to GitHub Releases.

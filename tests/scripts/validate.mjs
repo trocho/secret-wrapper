@@ -56,7 +56,7 @@ const packageJson = JSON.parse(readFileSync(resolve(root, "package.json")));
 require_(packageJson.name === "@trocho/secret-wrapper", "invalid npm package name");
 require_(packageJson.private !== true, "npm package must be publishable");
 require_(packageJson.publishConfig?.access === "public", "npm package must publish publicly");
-require_(packageJson.bin["secret-wrapper"] === "./bin/secret-wrapper.mjs", "invalid CLI entrypoint");
+require_(packageJson.bin["secret-wrapper"] === "bin/secret-wrapper.mjs", "invalid CLI entrypoint");
 
 const claudePlugin = JSON.parse(readFileSync(resolve(plugin, ".claude-plugin/plugin.json")));
 const codexPlugin = JSON.parse(readFileSync(resolve(plugin, ".codex-plugin/plugin.json")));

@@ -1,10 +1,10 @@
 {
   "name": "@trocho/secret-wrapper",
-  "version": "0.6.0-next.6",
+  "version": "0.6.0",
   "description": "Local-first secret adapters for launching tools and MCP servers.",
   "type": "module",
   "bin": {
-    "secret-wrapper": "./bin/secret-wrapper.mjs"
+    "secret-wrapper": "bin/secret-wrapper.mjs"
   },
   "files": [
     "bin",
@@ -14,6 +14,7 @@
   ],
   "scripts": {
     "test": "node --test tests/*.test.mjs",
+    "test:package-install": "node tests/scripts/verify-package-install.mjs",
     "sync:plugin-skill": "node tests/scripts/sync-plugin-skill.mjs",
     "check:plugin-skill": "node tests/scripts/sync-plugin-skill.mjs --check",
     "test:plugin-install": "docker build --pull --file tests/integration/Dockerfile.plugin-install --tag secret-wrapper-plugin-install-test . && docker run --rm secret-wrapper-plugin-install-test && docker run --rm secret-wrapper-plugin-install-test && docker image rm secret-wrapper-plugin-install-test",
@@ -41,6 +42,7 @@
     "coding-agents",
     "keychain",
     "bitwarden",
-    "1password"
+    "1password",
+    "security"
   ]
 }

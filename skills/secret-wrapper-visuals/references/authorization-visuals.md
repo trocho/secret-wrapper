@@ -6,6 +6,7 @@ Use one artifact per state:
 
 | State | Source | File |
 | --- | --- | --- |
+| Complete provider-neutral launch sequence | `render-operation-flow.mjs` | `docs/assets/operation-flow.svg` |
 | CLI begins and waits for authorization | `render-terminal-trace.mjs` | `docs/assets/terminal-flow.svg` |
 | One local form for all missing values | `node tests/scripts/authorization-demo.mjs` | `docs/assets/authorization-form.png` |
 | Values saved or concurrently preserved | Submit harmless placeholders in the demo | `docs/assets/authorization-success.png` |
@@ -34,6 +35,17 @@ node skills/secret-wrapper-visuals/scripts/render-terminal-trace.mjs \
 ```
 
 Pass repeated `--line` options only for concise demo-only content. The generator rejects common token shapes and long lines, but inspect the text yourself before committing.
+
+## Operation sequence
+
+Generate the static sequence used by GitHub and npm instead of embedding Mermaid, which npm does not render:
+
+```sh
+node skills/secret-wrapper-visuals/scripts/render-operation-flow.mjs \
+  --output docs/assets/operation-flow.svg
+```
+
+Keep it provider-neutral. It should explain retrieval, the missing-value authorization branch, and child-process launch without naming a particular secret manager.
 
 ## Validation
 
