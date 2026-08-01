@@ -25,3 +25,11 @@ Keep these public surfaces aligned for every stable release:
 | AgentSkill | Only `secret-wrapper`, imported from the canonical repository skill, linked from README |
 
 Version and test the release pipeline itself. A release is complete only after the registry, GitHub Release, directory listings, badges, and clean `main` state are verified.
+
+After publishing or changing a directory integration, run:
+
+```sh
+node maintenance/release/verify-publication.mjs
+```
+
+The AgentSkill GitHub webhook must remain active for push events so directory synchronization follows repository changes without relying only on the daily refresh.
