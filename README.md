@@ -190,6 +190,36 @@ The repository is public, so the installer can download the skill directly from 
 
 The skill tells Codex and Claude Code to use this consistent, secret-safe command pattern instead of inventing provider-specific launch scripts or placing secrets in configuration. It also instructs them not to repeat values, binds, record locators, or scopes in compacted handoffs.
 
+## Why install the skill?
+
+The Secret Wrapper skill teaches Codex and Claude Code how to configure secret-backed commands consistently and safely. It helps the agent select the correct provider syntax, create MCP host configuration, use multiple bindings, and diagnose startup problems without placing secret values in configuration, chat, or logs.
+
+The skill is guidance for the coding agent; it does not read or store secrets itself. The local Secret Wrapper CLI retrieves values from the selected provider only when it launches the target process.
+
+## Use the skill
+
+After installing the plugin or portable skill, describe the command or MCP server you want to protect. Codex or Claude Code will apply the skill automatically when the request involves Secret Wrapper, an MCP credential, or moving a secret out of configuration.
+
+For example:
+
+> Configure the Portainer MCP server through Secret Wrapper. Use macOS Keychain, bind `PORTAINER_API_KEY` to `portainer-mcp.api-key`, and add the server to my Codex `config.toml`.
+
+> Move the credentials used by this MCP server out of `.mcp.json` and configure Secret Wrapper with Bitwarden.
+
+> Diagnose this Secret Wrapper launcher with debug logging without displaying any credential values.
+
+The agent will:
+
+1. choose the matching provider recipe;
+2. create the `secret-wrapper run` command;
+3. add the command to the appropriate MCP host configuration;
+4. keep credential values out of persistent configuration;
+5. verify startup without printing the retrieved values.
+
+You can explicitly request the skill when needed:
+
+> Use the Secret Wrapper skill to configure this MCP server securely.
+
 ## Configure an MCP host
 
 The host always starts `secret-wrapper`; the wrapper retrieves values only for the child MCP process. Do not add a credential to the host's `env` block. Copy-ready configurations for Codex CLI and desktop, project or global `config.toml`, Claude Code CLI, `.mcp.json`, and hosts that use the common JSON command/arguments schema are in [MCP host configurations](skills/secret-wrapper/references/mcp-host-configurations.md).
