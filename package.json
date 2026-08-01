@@ -1,6 +1,6 @@
 {
   "name": "@trocho/secret-wrapper",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Local-first secret adapters for launching tools and MCP servers.",
   "type": "module",
   "bin": {
@@ -9,7 +9,7 @@
   "files": [
     "bin",
     "src",
-    "skills",
+    "skills/secret-wrapper",
     "docs"
   ],
   "scripts": {
@@ -17,6 +17,7 @@
     "test:package-install": "node tests/scripts/verify-package-install.mjs",
     "sync:plugin-skill": "node tests/scripts/sync-plugin-skill.mjs",
     "check:plugin-skill": "node tests/scripts/sync-plugin-skill.mjs --check",
+    "test:skill-discovery": "node tests/scripts/verify-skill-discovery.mjs",
     "test:plugin-install": "docker build --pull --file tests/integration/Dockerfile.plugin-install --tag secret-wrapper-plugin-install-test . && docker run --rm secret-wrapper-plugin-install-test && docker run --rm secret-wrapper-plugin-install-test && docker image rm secret-wrapper-plugin-install-test",
     "validate": "node tests/scripts/validate.mjs",
     "pack:check": "npm pack --dry-run"

@@ -36,8 +36,12 @@ if (!trace.includes('width="1200"') || !trace.includes("sanitized terminal trace
 }
 
 const operationFlow = readFileSync(resolve(root, "docs/assets/operation-flow.svg"), "utf8");
-if (!operationFlow.includes('width="1200"') || !operationFlow.includes("provider-neutral launch sequence")) {
-  throw new Error("operation-flow.svg must be the generated provider-neutral sequence");
+const operationSource = readFileSync(resolve(root, "maintenance/visuals/operation-flow.mmd"), "utf8");
+if (!operationSource.includes("sequenceDiagram") || !operationSource.includes("else A value is missing")) {
+  throw new Error("operation-flow.mmd must describe the provider-neutral Mermaid sequence");
+}
+if (!operationFlow.includes("<svg") || !operationFlow.includes('aria-roledescription="sequence"')) {
+  throw new Error("operation-flow.svg must be rendered from the Mermaid sequence");
 }
 
 console.log("visual assets are standardized");

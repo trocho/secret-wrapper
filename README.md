@@ -1,8 +1,10 @@
 # Secret Wrapper
 
 [![npm version](https://img.shields.io/npm/v/%40trocho%2Fsecret-wrapper)](https://www.npmjs.com/package/@trocho/secret-wrapper)
+[![GitHub release](https://img.shields.io/github/v/release/trocho/secret-wrapper)](https://github.com/trocho/secret-wrapper/releases/latest)
 [![Validate](https://github.com/trocho/secret-wrapper/actions/workflows/validate.yml/badge.svg)](https://github.com/trocho/secret-wrapper/actions/workflows/validate.yml)
 [![skills.sh](https://skills.sh/b/trocho/secret-wrapper)](https://skills.sh/trocho/secret-wrapper)
+[![AgentSkill](https://img.shields.io/badge/AgentSkill-secret--wrapper-6d5dfc)](https://agentskill.sh/@trocho/secret-wrapper)
 
 Local-first secret adapters for launching MCP servers, coding tools, and scripts.
 
@@ -31,8 +33,6 @@ The screenshots below are from the real local browser flow using demo names and 
 | ![Secret Wrapper authorization error page](docs/assets/authorization-retry.png) |
 
 The form appears only after a provider confirms a value is missing. It states which local process is waiting, never displays existing values, and gives a clear status after submission: created, updated, preserved because another process supplied a value first, or unchanged because the field was blank. If a write fails, the form keeps the user in the local page with a safe diagnostic and a retry path.
-
-Maintainers can add or refresh these assets with the repository's [visual documentation skill](skills/secret-wrapper-visuals/SKILL.md). It includes the safe demo launcher, terminal-trace generator, visual language, and validation steps.
 
 ## Install
 

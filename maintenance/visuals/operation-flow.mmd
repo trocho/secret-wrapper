@@ -1,0 +1,27 @@
+sequenceDiagram
+    autonumber
+    participant Caller as Launch command
+    participant Wrapper as Secret Wrapper
+    participant Adapter as Provider adapter
+    participant Store as Secret store
+    participant Browser as Local form
+    participant Target as MCP server or tool
+
+    Caller->>Wrapper: Start command with binds
+    Wrapper->>Adapter: Resolve every selector
+    Adapter->>Store: Read stored values
+    Store-->>Adapter: Values or confirmed missing
+
+    alt Every value exists
+        Adapter-->>Wrapper: Resolved values
+    else A value is missing
+        Adapter-->>Wrapper: Authorization required
+        Wrapper->>Browser: Ask for all missing values
+        Browser-->>Wrapper: Submit values
+        Wrapper->>Adapter: Save values
+        Adapter->>Store: Write and read again
+        Store-->>Adapter: Resolved values
+        Adapter-->>Wrapper: All binds ready
+    end
+
+    Wrapper->>Target: Launch with bound environment

@@ -8,8 +8,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const plugin = resolve(root, "plugins/secret-wrapper");
 const rootSkill = resolve(root, "skills/secret-wrapper");
 const pluginSkill = resolve(plugin, "skills/secret-wrapper");
-const rootVisualSkill = resolve(root, "skills/secret-wrapper-visuals");
-const pluginVisualSkill = resolve(plugin, "skills/secret-wrapper-visuals");
+const visualMaintenance = resolve(root, "maintenance/visuals");
 const codexMarketplacePath = resolve(root, ".agents/plugins/marketplace.json");
 
 
@@ -26,10 +25,13 @@ for (const path of [
   resolve(plugin, ".claude-plugin/plugin.json"),
   resolve(plugin, ".codex-plugin/plugin.json"),
   resolve(rootSkill, "SKILL.md"),
-  resolve(rootVisualSkill, "SKILL.md"),
-  resolve(rootVisualSkill, "scripts/render-terminal-trace.mjs"),
-  resolve(rootVisualSkill, "scripts/check-authorization-assets.mjs"),
-  resolve(rootVisualSkill, "references/authorization-visuals.md"),
+  resolve(visualMaintenance, "README.md"),
+  resolve(visualMaintenance, "operation-flow.mmd"),
+  resolve(visualMaintenance, "mermaid-config.json"),
+  resolve(visualMaintenance, "mermaid.css"),
+  resolve(visualMaintenance, "scripts/render-operation-flow.mjs"),
+  resolve(visualMaintenance, "scripts/render-terminal-trace.mjs"),
+  resolve(visualMaintenance, "scripts/check-authorization-assets.mjs"),
   resolve(root, "package.json"),
   resolve(root, "skills/secret-wrapper/references/provider-recipes.md"),
   resolve(root, "skills/secret-wrapper/references/mcp-host-configurations.md"),
@@ -38,11 +40,13 @@ for (const path of [
 }
 
 require_(statSync(pluginSkill).isDirectory(), "plugin skill must be a directory");
-require_(statSync(pluginVisualSkill).isDirectory(), "plugin visual skill must be a directory");
 execFileSync(process.execPath, [resolve(root, "tests/scripts/sync-plugin-skill.mjs"), "--check"], {
   stdio: "inherit",
 });
-execFileSync(process.execPath, [resolve(root, "skills/secret-wrapper-visuals/scripts/check-authorization-assets.mjs")], {
+execFileSync(process.execPath, [resolve(visualMaintenance, "scripts/check-authorization-assets.mjs")], {
+  stdio: "inherit",
+});
+execFileSync(process.execPath, [resolve(root, "tests/scripts/verify-skill-discovery.mjs")], {
   stdio: "inherit",
 });
 

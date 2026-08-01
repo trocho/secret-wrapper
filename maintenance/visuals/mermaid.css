@@ -1,0 +1,34 @@
+svg {
+  background: #0a101a !important;
+}
+
+rect.actor {
+  fill: #172438 !important;
+  stroke: #334155 !important;
+}
+
+text.actor,
+.messageText,
+.loopText,
+.labelText {
+  fill: #f8fafc !important;
+}
+
+.actor-line,
+.loopLine {
+  stroke: #3d526b !important;
+}
+
+.messageLine0,
+.messageLine1 {
+  stroke: #77e3ba !important;
+}
+
+.labelBox {
+  fill: #111b2a !important;
+  stroke: #3d526b !important;
+}
+
+.sequenceNumber {
+  fill: #0a101a !important;
+}

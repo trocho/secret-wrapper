@@ -1,0 +1,27 @@
+{
+  "theme": "base",
+  "darkMode": true,
+  "fontFamily": "ui-monospace, SFMono-Regular, Menlo, monospace",
+  "themeVariables": {
+    "background": "#0a101a",
+    "mainBkg": "#172438",
+    "primaryColor": "#172438",
+    "primaryTextColor": "#f8fafc",
+    "primaryBorderColor": "#334155",
+    "lineColor": "#77e3ba",
+    "actorBkg": "#172438",
+    "actorBorder": "#334155",
+    "actorTextColor": "#f8fafc",
+    "actorLineColor": "#334155",
+    "signalColor": "#77e3ba",
+    "signalTextColor": "#dbe6f3",
+    "labelBoxBkgColor": "#111b2a",
+    "labelBoxBorderColor": "#3d526b",
+    "labelTextColor": "#f8fafc",
+    "loopTextColor": "#f8fafc",
+    "noteBkgColor": "#111b2a",
+    "noteBorderColor": "#3d526b",
+    "noteTextColor": "#f8fafc",
+    "sequenceNumberColor": "#0a101a"
+  }
+}

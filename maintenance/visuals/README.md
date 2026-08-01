@@ -1,4 +1,6 @@
-# Authorization visuals
+# Visual maintenance
+
+This repository-only toolkit keeps Secret Wrapper screenshots and generated diagrams consistent. It is not a user-facing agent skill and must remain outside public skill and plugin distributions.
 
 ## States to document
 
@@ -6,7 +8,7 @@ Use one artifact per state:
 
 | State | Source | File |
 | --- | --- | --- |
-| Complete provider-neutral launch sequence | `render-operation-flow.mjs` | `docs/assets/operation-flow.svg` |
+| Complete provider-neutral launch sequence | `operation-flow.mmd` rendered by Mermaid CLI | `docs/assets/operation-flow.svg` |
 | CLI begins and waits for authorization | `render-terminal-trace.mjs` | `docs/assets/terminal-flow.svg` |
 | One local form for all missing values | `node tests/scripts/authorization-demo.mjs` | `docs/assets/authorization-form.png` |
 | Values saved or concurrently preserved | Submit harmless placeholders in the demo | `docs/assets/authorization-success.png` |
@@ -30,7 +32,7 @@ Every browser PNG must be an actual PNG and exactly 1200 × 900. Do not crop, st
 Generate the committed trace instead of editing SVG markup:
 
 ```sh
-node skills/secret-wrapper-visuals/scripts/render-terminal-trace.mjs \
+node maintenance/visuals/scripts/render-terminal-trace.mjs \
   --output docs/assets/terminal-flow.svg
 ```
 
@@ -38,19 +40,19 @@ Pass repeated `--line` options only for concise demo-only content. The generator
 
 ## Operation sequence
 
-Generate the static sequence used by GitHub and npm instead of embedding Mermaid, which npm does not render:
+Edit `operation-flow.mmd`, then generate the static Mermaid SVG used by GitHub and npm:
 
 ```sh
-node skills/secret-wrapper-visuals/scripts/render-operation-flow.mjs \
+node maintenance/visuals/scripts/render-operation-flow.mjs \
   --output docs/assets/operation-flow.svg
 ```
 
-Keep it provider-neutral. It should explain retrieval, the missing-value authorization branch, and child-process launch without naming a particular secret manager.
+Keep it provider-neutral. The pinned Mermaid CLI renders the source with `mermaid-config.json` and `mermaid.css`; do not hand-edit the generated SVG.
 
 ## Validation
 
 ```sh
-node skills/secret-wrapper-visuals/scripts/check-authorization-assets.mjs
+node maintenance/visuals/scripts/check-authorization-assets.mjs
 npm test
 npm run validate
 git diff --check

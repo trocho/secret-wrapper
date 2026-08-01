@@ -1,4 +1,0 @@
-interface:
-  display_name: "Secret Wrapper visuals"
-  short_description: "Create safe, consistent product visuals"
-  default_prompt: "Use $secret-wrapper-visuals to add a safe authorization screenshot or terminal trace."

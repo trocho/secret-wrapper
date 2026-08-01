@@ -5,8 +5,8 @@ import { fileURLToPath } from "node:url";
 
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-const source = resolve(root, "skills");
-const target = resolve(root, "plugins/secret-wrapper/skills");
+const source = resolve(root, "skills/secret-wrapper");
+const target = resolve(root, "plugins/secret-wrapper/skills/secret-wrapper");
 const check = process.argv.includes("--check");
 
 

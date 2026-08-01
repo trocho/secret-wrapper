@@ -61,15 +61,41 @@ jobs:
           if npm view "$package@$version" version >/dev/null 2>&1; then
             echo "$package@$version is already published; skipping npm publish"
           else
-            npm publish "${{ steps.pack.outputs.tarball }}" --tag "${{ steps.package.outputs.dist-tag }}"
+            npm publish "${{ steps.pack.outputs.tarball }}" --tag "${{ steps.package.outputs.dist-tag }}" --provenance
+          fi
+      - name: Verify npm provenance
+        shell: bash
+        run: |
+          package="${{ steps.package.outputs.name }}"
+          version="${{ steps.package.outputs.version }}"
+          predicate="$(npm view "$package@$version" dist.attestations.provenance.predicateType)"
+          if [[ "$predicate" != "https://slsa.dev/provenance/v1" ]]; then
+            echo "Missing SLSA provenance for $package@$version" >&2
+            exit 1
           fi
       - name: Create or update GitHub release
         shell: bash
         run: |
+          package="${{ steps.package.outputs.name }}"
+          version="${{ steps.package.outputs.version }}"
+          gh api \
+            --method POST \
+            "repos/$GITHUB_REPOSITORY/releases/generate-notes" \
+            -f "tag_name=$GITHUB_REF_NAME" \
+            -f "target_commitish=$GITHUB_SHA" \
+            --jq .body > generated-notes.md
+          {
+            printf '## Try it\n\n```sh\nnpx --yes %s@%s --help\n```\n\n' "$package" "$version"
+            printf '## Demo\n\n'
+            printf '[See the authorization flow](https://github.com/%s/blob/%s/README.md#see-the-authorization-flow).\n\n' "$GITHUB_REPOSITORY" "$GITHUB_REF_NAME"
+            printf '![Sanitized Secret Wrapper launch](https://raw.githubusercontent.com/%s/%s/docs/assets/terminal-flow.svg)\n\n' "$GITHUB_REPOSITORY" "$GITHUB_REF_NAME"
+            cat generated-notes.md
+          } > release-notes.md
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
             gh release upload "$GITHUB_REF_NAME" "${{ steps.pack.outputs.tarball }}" secret-wrapper-plugin.zip --clobber
+            gh release edit "$GITHUB_REF_NAME" --notes-file release-notes.md
           else
-            gh release create "$GITHUB_REF_NAME" "${{ steps.pack.outputs.tarball }}" secret-wrapper-plugin.zip --generate-notes
+            gh release create "$GITHUB_REF_NAME" "${{ steps.pack.outputs.tarball }}" secret-wrapper-plugin.zip --notes-file release-notes.md
           fi
         env:
           GH_TOKEN: ${{ github.token }}
