@@ -4,8 +4,13 @@ on:
   push:
     tags: ["v*"]
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 permissions:
   contents: write
+  id-token: write
 
 jobs:
   release:
@@ -14,12 +19,56 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
-          node-version: "22"
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+          package-manager-cache: false
+      - name: Verify tag and determine npm dist-tag
+        id: package
+        shell: bash
+        run: |
+          version="$(node --print "require('./package.json').version")"
+          package="$(node --print "require('./package.json').name")"
+          if [[ "$GITHUB_REF_NAME" != "v$version" ]]; then
+            echo "Release tag $GITHUB_REF_NAME does not match package version $version" >&2
+            exit 1
+          fi
+          if [[ "$version" == *-* ]]; then
+            dist_tag="$(node --print "require('./package.json').version.split('-')[1].split('.')[0]")"
+          else
+            dist_tag="latest"
+          fi
+          {
+            echo "name=$package"
+            echo "version=$version"
+            echo "dist-tag=$dist_tag"
+          } >> "$GITHUB_OUTPUT"
       - run: npm test
       - run: npm run validate
-      - run: npm pack
+      - name: Pack npm artifact
+        id: pack
+        shell: bash
+        run: |
+          tarball="$(npm pack --silent)"
+          echo "tarball=$tarball" >> "$GITHUB_OUTPUT"
       - run: zip -r secret-wrapper-plugin.zip plugins/secret-wrapper
       - run: npm run test:plugin-install
-      - run: gh release create "$GITHUB_REF_NAME" *.tgz secret-wrapper-plugin.zip --generate-notes
+      - name: Publish package to npm
+        shell: bash
+        run: |
+          package="${{ steps.package.outputs.name }}"
+          version="${{ steps.package.outputs.version }}"
+          if npm view "$package@$version" version >/dev/null 2>&1; then
+            echo "$package@$version is already published; skipping npm publish"
+          else
+            npm publish "${{ steps.pack.outputs.tarball }}" --tag "${{ steps.package.outputs.dist-tag }}"
+          fi
+      - name: Create or update GitHub release
+        shell: bash
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "${{ steps.pack.outputs.tarball }}" secret-wrapper-plugin.zip --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" "${{ steps.pack.outputs.tarball }}" secret-wrapper-plugin.zip --generate-notes
+          fi
         env:
           GH_TOKEN: ${{ github.token }}
