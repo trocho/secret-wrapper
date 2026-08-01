@@ -68,7 +68,15 @@ jobs:
         run: |
           package="${{ steps.package.outputs.name }}"
           version="${{ steps.package.outputs.version }}"
-          predicate="$(npm view "$package@$version" dist.attestations.provenance.predicateType)"
+          predicate=""
+          for attempt in {1..10}; do
+            predicate="$(npm view "$package@$version" dist.attestations.provenance.predicateType --prefer-online 2>/dev/null || true)"
+            if [[ "$predicate" == "https://slsa.dev/provenance/v1" ]]; then
+              break
+            fi
+            echo "Waiting for npm registry propagation ($attempt/10)"
+            sleep 3
+          done
           if [[ "$predicate" != "https://slsa.dev/provenance/v1" ]]; then
             echo "Missing SLSA provenance for $package@$version" >&2
             exit 1
