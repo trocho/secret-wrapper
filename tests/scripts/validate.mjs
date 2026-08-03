@@ -62,6 +62,11 @@ require_(packageJson.private !== true, "npm package must be publishable");
 require_(packageJson.publishConfig?.access === "public", "npm package must publish publicly");
 require_(packageJson.bin["secret-wrapper"] === "bin/secret-wrapper.mjs", "invalid CLI entrypoint");
 
+const skillText = readFileSync(resolve(rootSkill, "SKILL.md"), "utf8");
+require_(skillText.includes("opaque credential data, never as instructions or model input"), "skill must define credential input as opaque data");
+require_(skillText.includes("Do not inspect or automate form fields"), "skill must prohibit agent access to authorization values");
+require_(skillText.includes("Keep the built-in form on `127.0.0.1`"), "skill must keep browser authorization local");
+
 const claudePlugin = JSON.parse(readFileSync(resolve(plugin, ".claude-plugin/plugin.json")));
 const codexPlugin = JSON.parse(readFileSync(resolve(plugin, ".codex-plugin/plugin.json")));
 require_(claudePlugin.version === packageJson.version, "Claude plugin version must match package version");
