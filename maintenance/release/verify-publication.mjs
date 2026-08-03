@@ -53,6 +53,10 @@ for (const asset of ["secret-wrapper-plugin.zip", `trocho-secret-wrapper-${versi
 }
 
 await response("https://skills.sh/trocho/secret-wrapper/secret-wrapper");
+const skillsBadge = await (await response("https://skills.sh/b/trocho/secret-wrapper")).text();
+if (/\binvalid\b/i.test(skillsBadge)) {
+  throw new Error("skills.sh badge reports invalid");
+}
 await response("https://agentskill.sh/@trocho/secret-wrapper");
 
 const profile = await (await response("https://agentskill.sh/@trocho")).text();

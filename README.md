@@ -3,7 +3,7 @@
 [![npm version](https://img.shields.io/npm/v/%40trocho%2Fsecret-wrapper)](https://www.npmjs.com/package/@trocho/secret-wrapper)
 [![GitHub release](https://img.shields.io/github/v/release/trocho/secret-wrapper)](https://github.com/trocho/secret-wrapper/releases/latest)
 [![Validate](https://github.com/trocho/secret-wrapper/actions/workflows/validate.yml/badge.svg)](https://github.com/trocho/secret-wrapper/actions/workflows/validate.yml)
-[![skills.sh](https://skills.sh/b/trocho/secret-wrapper/secret-wrapper)](https://skills.sh/trocho/secret-wrapper/secret-wrapper)
+[![skills.sh](https://skills.sh/b/trocho/secret-wrapper)](https://skills.sh/trocho/secret-wrapper/secret-wrapper)
 [![AgentSkill](https://img.shields.io/badge/AgentSkill-secret--wrapper-6d5dfc)](https://agentskill.sh/@trocho/secret-wrapper)
 
 Local-first secret adapters for launching MCP servers, coding tools, and scripts.
