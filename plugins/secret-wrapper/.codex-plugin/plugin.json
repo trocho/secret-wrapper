@@ -1,6 +1,6 @@
 {
   "name": "secret-wrapper",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "description": "Launch a tool with one or more values from a local secret provider.",
   "author": {
     "name": "Patryk Trochowski",

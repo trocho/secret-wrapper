@@ -46,3 +46,5 @@ When adding the launcher to Codex, Claude Code, or another MCP host, read [refer
 Run a non-destructive startup check. Do not print the secret or use a target command that exposes its environment. On supported providers, a confirmed missing value opens the local authorization form; malformed values and provider failures fail with exit code 78 instead. The completion page reports whether each value was created, updated, preserved, or left unchanged. Do not reset provider credentials or persist the secret outside its provider.
 
 For diagnosis, add `--debug` before `--`. Share only its metadata and lifecycle output; it must not contain a secret value. See [references/provider-recipes.md](references/provider-recipes.md) for transform-order examples.
+
+Source fingerprint: `sha256:77170939f4152e2b124b90fc702793e7effd5d21e7cd7116df6139dd00f42c18`.

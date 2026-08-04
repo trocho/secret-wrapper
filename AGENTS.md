@@ -11,6 +11,7 @@ Treat every repeatable release, documentation, maintenance, validation, and dist
 - Keep public interfaces narrow. `skills/secret-wrapper` is the only user-facing skill distributed through the repository, npm package, Codex plugin, Claude Code plugin, skills.sh, and AgentSkill.
 - Keep repository-maintenance tooling outside discoverable `skills/` and plugin directories. Maintenance documentation must not masquerade as an installable user skill.
 - Add a regression check whenever a packaging, discovery, rendering, or release problem is fixed.
+- After changing the canonical public skill, run `npm run skill:fingerprint`, then `npm run sync:plugin-skill`; validation rejects a stale source fingerprint or plugin copy.
 - Before publishing, run the complete validation, inspect packed contents, verify public skill discovery, and exercise the installed package or plugin in an isolated environment.
 
 ## Release channels
@@ -31,5 +32,7 @@ After publishing or changing a directory integration, run:
 ```sh
 node maintenance/release/verify-publication.mjs
 ```
+
+GitHub About metadata, discovery topics, Discussions, and private vulnerability reporting are declared in `maintenance/promotion/github-metadata.json`. Apply and verify them with `npm run promotion:apply` and `npm run promotion:check`; do not rely on manual settings as the canonical source. Keep public launch claims and copy synchronized in `maintenance/promotion/README.md`.
 
 The AgentSkill GitHub webhook must remain active for push events so directory synchronization follows repository changes without relying only on the daily refresh.

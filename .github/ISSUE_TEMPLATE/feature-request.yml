@@ -1,0 +1,40 @@
+name: Feature or provider request
+description: Propose a provider, host integration, or provider-neutral improvement.
+title: "request: "
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: Do not include credentials, real provider locators, account identifiers, or private infrastructure details.
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Request type
+      options:
+        - Provider adapter
+        - MCP host integration
+        - CLI behavior
+        - Documentation or recipe
+        - Packaging or distribution
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: Describe the workflow and why the existing provider-neutral contract does not cover it.
+    validations:
+      required: true
+  - type: textarea
+    id: proposed
+    attributes:
+      label: Proposed outcome
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety check
+      options:
+        - label: I used placeholders and included no credential or private infrastructure data.
+          required: true

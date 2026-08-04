@@ -1,0 +1,58 @@
+name: Bug report
+description: Report reproducible Secret Wrapper behavior with sanitized evidence.
+title: "bug: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Never include credentials, provider exports, authentication responses, raw environments, real selectors, or private infrastructure details. Use private vulnerability reporting for security issues.
+  - type: input
+    id: version
+    attributes:
+      label: Secret Wrapper version
+      placeholder: 0.6.3
+    validations:
+      required: true
+  - type: dropdown
+    id: provider
+    attributes:
+      label: Provider
+      options:
+        - macOS Keychain
+        - Linux Secret Service
+        - Windows Credential Manager
+        - Bitwarden
+        - Bitwarden Secrets Manager
+        - 1Password
+        - Infisical
+        - Provider-neutral CLI behavior
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Sanitized reproduction
+      description: Use placeholders for every environment name, selector, scope, path, and command argument.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observed behavior
+      description: Sanitized `--debug` lifecycle output is welcome; credential values and provider responses are not.
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety check
+      options:
+        - label: I removed all credential values and private provider or infrastructure details.
+          required: true
