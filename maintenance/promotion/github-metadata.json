@@ -1,0 +1,21 @@
+{
+  "repository": "trocho/secret-wrapper",
+  "description": "Launch MCP servers and coding tools with secrets from native keychains and secret managers.",
+  "homepage": "https://github.com/trocho/secret-wrapper#readme",
+  "discussions": true,
+  "privateVulnerabilityReporting": true,
+  "skillsSh": {
+    "auditProvider": "Snyk"
+  },
+  "topics": [
+    "bitwarden",
+    "claude-code",
+    "coding-agents",
+    "keychain",
+    "mcp",
+    "openai-codex",
+    "secret-management",
+    "secrets",
+    "security"
+  ]
+}

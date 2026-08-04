@@ -8,6 +8,8 @@
 
 Local-first secret adapters for launching MCP servers, coding tools, and scripts.
 
+[Security policy](SECURITY.md) · [Contributing guide](CONTRIBUTING.md) · [Discussions](https://github.com/trocho/secret-wrapper/discussions)
+
 ## Problem it solves
 
 MCP configuration, Compose files, and shell startup scripts often need an API token. This CLI keeps configuration free of the secret itself and retrieves it only when the target command starts.

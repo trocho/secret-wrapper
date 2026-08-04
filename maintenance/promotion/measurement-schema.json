@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Secret Wrapper promotion measurement",
+  "type": "object",
+  "required": ["schemaVersion", "day", "capturedAt", "publicSignals", "humanSignals", "exclusions"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "day": { "enum": [7, 14] },
+    "capturedAt": { "type": "string", "format": "date-time" },
+    "publicSignals": {
+      "type": "object",
+      "required": ["githubStars", "githubForks", "npmDownloadsLastWeek", "skillsShInstalls"],
+      "additionalProperties": false,
+      "properties": {
+        "githubStars": { "type": "integer", "minimum": 0 },
+        "githubForks": { "type": "integer", "minimum": 0 },
+        "npmDownloadsLastWeek": { "type": "integer", "minimum": 0 },
+        "skillsShInstalls": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "humanSignals": {
+      "type": "object",
+      "required": ["externalTesters", "actionableFeedback"],
+      "additionalProperties": false,
+      "properties": {
+        "externalTesters": { "type": "integer", "minimum": 0 },
+        "actionableFeedback": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "exclusions": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+  },
+  "additionalProperties": false
+}
