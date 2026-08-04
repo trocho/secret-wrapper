@@ -20,9 +20,17 @@ const verificationAttempts = 4;
 export async function response(fetchImplementation, url, options = {}, timeoutMs = requestTimeoutMs) {
   const {
     headers = {},
-    signal = AbortSignal.timeout(timeoutMs),
+    signal: callerSignal,
     ...requestOptions
   } = options;
+  const timeoutController = new AbortController();
+  const timeout = setTimeout(
+    () => timeoutController.abort(new Error(`request timed out after ${timeoutMs}ms`)),
+    timeoutMs,
+  );
+  const signal = callerSignal
+    ? AbortSignal.any([callerSignal, timeoutController.signal])
+    : timeoutController.signal;
   let result;
   try {
     result = await fetchImplementation(url, {
@@ -35,6 +43,8 @@ export async function response(fetchImplementation, url, options = {}, timeoutMs
     });
   } catch (error) {
     throw new Error(`${url} failed: ${error.message}`, { cause: error });
+  } finally {
+    clearTimeout(timeout);
   }
   if (!result.ok) {
     throw new Error(`${url} returned ${result.status}`);
